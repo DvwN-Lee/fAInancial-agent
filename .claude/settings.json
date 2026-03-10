@@ -1,0 +1,78 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest)",
+      "Bash(pytest *)",
+      "Bash(ruff check .)",
+      "Bash(ruff format .)",
+      "Bash(mypy .)",
+      "Bash(uv run *)",
+      "Bash(uv add *)",
+      "Bash(uv sync)",
+      "Bash(docker compose up)",
+      "Bash(docker compose up *)",
+      "Bash(docker compose down)",
+      "Bash(docker compose down *)",
+      "Bash(docker compose build)",
+      "Bash(docker compose build *)",
+      "Bash(docker compose logs *)",
+      "Bash(docker build *)",
+      "Bash(docker ps)",
+      "Bash(docker images)",
+      "Bash(git status)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git tag *)",
+      "Read(.env.example)"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(eval *)",
+      "Bash(curl * | bash *)",
+      "Bash(curl * | sh *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/credentials*)",
+      "Read(./**/secrets*)",
+      "Read(./**/terraform.tfvars)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(./**/*.pem)",
+      "Edit(./**/*.key)",
+      "Edit(./**/credentials*)",
+      "Edit(./**/secrets*)",
+      "Edit(./**/terraform.tfvars)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Write(./**/*.pem)",
+      "Write(./**/*.key)",
+      "Write(./**/credentials*)",
+      "Write(./**/secrets*)",
+      "Write(./**/terraform.tfvars)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(pip install *)",
+      "Edit(pyproject.toml)",
+      "Edit(docker-compose.yml)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{"type": "command", "command": "python3 .claude/hooks/classify-bash.py", "timeout": 10}]
+      }
+    ]
+  }
+}
