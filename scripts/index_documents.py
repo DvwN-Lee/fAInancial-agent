@@ -26,7 +26,7 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 DOCS_DIR = DATA_DIR / "documents"
 FAISS_DIR = DATA_DIR / "faiss"
 
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 BATCH_SIZE = 100  # batch_embed_contents 1회당 텍스트 수
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100

@@ -9,7 +9,7 @@ import numpy as np
 from google import genai
 
 FAISS_DIR = Path(__file__).parent.parent / "data" / "faiss"
-EMBEDDING_MODEL = "text-embedding-004"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 TOP_K = 5
 SEARCH_MULTIPLIER = 3  # post-filter용 오버페칭 배수
 
