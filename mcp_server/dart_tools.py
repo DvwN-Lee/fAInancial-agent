@@ -45,6 +45,8 @@ def _load_corp_codes() -> dict[str, str]:
             if corp_name and corp_code:
                 mapping[corp_name] = corp_code
 
+        if not mapping:
+            raise RuntimeError("DART corpCode XML에서 기업 목록을 파싱하지 못했습니다 (0건)")
         _corp_code_cache = mapping
     return _corp_code_cache
 
@@ -73,21 +75,28 @@ REPORT_CODES = {
 
 def dart_financials(corp_name: str, year: str, report_type: str = "annual") -> str:
     """DART API로 재무제표 주요계정을 조회한다."""
-    corp_code = resolve_corp_code(corp_name)
+    try:
+        corp_code = resolve_corp_code(corp_name)
+    except ValueError as e:
+        return f"기업 조회 오류: {e}"
+
     reprt_code = REPORT_CODES.get(report_type, "11011")
 
-    resp = requests.get(
-        f"{DART_BASE_URL}/fnlttSinglAcnt.json",
-        params={
-            "crtfc_key": DART_API_KEY,
-            "corp_code": corp_code,
-            "bsns_year": year,
-            "reprt_code": reprt_code,
-        },
-        timeout=15,
-    )
-    resp.raise_for_status()
-    data = resp.json()
+    try:
+        resp = requests.get(
+            f"{DART_BASE_URL}/fnlttSinglAcnt.json",
+            params={
+                "crtfc_key": DART_API_KEY,
+                "corp_code": corp_code,
+                "bsns_year": year,
+                "reprt_code": reprt_code,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.exceptions.RequestException as e:
+        return f"DART API 네트워크 오류: {e}"
 
     if data.get("status") != "000":
         return f"DART API 오류: {data.get('message', '알 수 없는 오류')}"
@@ -104,17 +113,20 @@ def dart_financials(corp_name: str, year: str, report_type: str = "annual") -> s
 
 def dart_search(keyword: str, page_count: int = 10) -> str:
     """DART 공시 검색."""
-    resp = requests.get(
-        f"{DART_BASE_URL}/list.json",
-        params={
-            "crtfc_key": DART_API_KEY,
-            "corp_name": keyword,
-            "page_count": str(page_count),
-        },
-        timeout=15,
-    )
-    resp.raise_for_status()
-    data = resp.json()
+    try:
+        resp = requests.get(
+            f"{DART_BASE_URL}/list.json",
+            params={
+                "crtfc_key": DART_API_KEY,
+                "corp_name": keyword,
+                "page_count": str(page_count),
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.exceptions.RequestException as e:
+        return f"DART API 네트워크 오류: {e}"
 
     if data.get("status") != "000":
         return f"DART API 오류: {data.get('message', '알 수 없는 오류')}"

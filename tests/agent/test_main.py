@@ -20,6 +20,19 @@ async def test_chat_endpoint(mock_run_agent):
 
 
 @pytest.mark.asyncio
+@patch("main.run_agent", new_callable=AsyncMock)
+async def test_chat_endpoint_error(mock_run_agent):
+    mock_run_agent.side_effect = RuntimeError("MCP 서버 연결 실패")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/chat", json={"message": "테스트"})
+
+    assert resp.status_code == 500
+    assert "MCP 서버 연결 실패" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_health_endpoint():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

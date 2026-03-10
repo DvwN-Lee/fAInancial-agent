@@ -139,3 +139,30 @@ def test_dart_search_no_results(mock_get):
 
     result = dart_search("없는회사")
     assert "오류" in result or "없습니다" in result
+
+
+def test_dart_financials_corp_not_found():
+    with patch("dart_tools.resolve_corp_code", side_effect=ValueError("기업을 찾을 수 없습니다")):
+        result = dart_financials("없는회사", "2024")
+    assert "기업 조회 오류" in result
+
+
+@patch("dart_tools.resolve_corp_code", return_value="00126380")
+@patch("dart_tools.requests.get")
+def test_dart_financials_network_error(mock_get, mock_resolve):
+    import requests as req_lib
+
+    mock_get.side_effect = req_lib.exceptions.ConnectionError("연결 실패")
+
+    result = dart_financials("삼성전자", "2024")
+    assert "네트워크 오류" in result
+
+
+@patch("dart_tools.requests.get")
+def test_dart_search_network_error(mock_get):
+    import requests as req_lib
+
+    mock_get.side_effect = req_lib.exceptions.Timeout("타임아웃")
+
+    result = dart_search("삼성전자")
+    assert "네트워크 오류" in result

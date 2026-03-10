@@ -53,7 +53,10 @@ async def run_agent(user_message: str) -> str:
         tool_results = []
         for block in response.content:
             if block.type == "tool_use":
-                result = await call_mcp_tool(block.name, block.input)
+                try:
+                    result = await call_mcp_tool(block.name, block.input)
+                except Exception as exc:
+                    result = f"Tool '{block.name}' 호출 실패: {exc}"
                 tool_results.append(
                     {
                         "type": "tool_result",
