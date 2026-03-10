@@ -41,6 +41,13 @@ async def run_agent(user_message: str) -> str:
                     return block.text
             return ""
 
+        if response.stop_reason != "tool_use":
+            # max_tokens, stop_sequence 등 예상치 못한 종료
+            for block in reversed(response.content):
+                if block.type == "text":
+                    return block.text
+            return f"응답이 중단되었습니다 (사유: {response.stop_reason})"
+
         # tool_use 처리
         messages.append({"role": "assistant", "content": response.content})
         tool_results = []

@@ -30,3 +30,12 @@ def test_krx_price_empty(mock_reader):
 
     result = krx_price("999999", "2025-01-02", "2025-01-03")
     assert "데이터가 없습니다" in result
+
+
+@patch("krx_tools.fdr.DataReader")
+def test_krx_price_exception(mock_reader):
+    mock_reader.side_effect = Exception("네트워크 오류")
+
+    result = krx_price("005930", "2025-01-02", "2025-01-03")
+    assert "조회 실패" in result
+    assert "005930" in result

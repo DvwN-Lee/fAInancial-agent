@@ -3,10 +3,14 @@ fAInancial-agent FastAPI 진입점
 POST /chat → Agent Loop 실행
 """
 
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from loop import run_agent
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="fAInancial-agent")
 
@@ -21,8 +25,12 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
-    result = await run_agent(req.message)
-    return ChatResponse(response=result)
+    try:
+        result = await run_agent(req.message)
+        return ChatResponse(response=result)
+    except Exception as e:
+        logger.exception("Agent loop failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/health")

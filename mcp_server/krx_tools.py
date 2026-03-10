@@ -8,7 +8,10 @@ import FinanceDataReader as fdr
 
 def krx_price(ticker: str, start_date: str, end_date: str) -> str:
     """KRX 주가 데이터를 조회한다."""
-    df = fdr.DataReader(ticker, start_date, end_date)
+    try:
+        df = fdr.DataReader(ticker, start_date, end_date)
+    except Exception as e:
+        return f"주가 데이터 조회 실패 ({ticker}): {e}"
 
     if df.empty:
         return f"'{ticker}' 종목의 해당 기간 데이터가 없습니다"
