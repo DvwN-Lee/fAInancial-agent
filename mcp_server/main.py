@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from dart_tools import dart_financials, dart_search
 from krx_tools import krx_price
 
-mcp = FastMCP("fAInancial", stateless_http=True)
+mcp = FastMCP("fAInancial", stateless_http=True, host="0.0.0.0", port=8001)
 
 
 @mcp.tool()
@@ -47,4 +47,4 @@ def get_stock_price(ticker: str, start_date: str, end_date: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8001)
+    mcp.run(transport="streamable-http")

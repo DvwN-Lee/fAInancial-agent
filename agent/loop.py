@@ -20,7 +20,7 @@ def _get_client() -> genai.Client:
         _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     return _client
 
-MODEL = "gemini-2.0-flash"
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 SYSTEM_PROMPT = (
     "당신은 한국 금융 데이터 분석 AI 어시스턴트입니다. "
