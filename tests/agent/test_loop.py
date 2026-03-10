@@ -1,37 +1,69 @@
 from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 
-from loop import run_agent
+from loop import run_agent, _mcp_tools_to_gemini
 
 
-def _make_text_block(text):
-    block = MagicMock()
-    block.type = "text"
-    block.text = text
-    return block
+def _make_text_response(text):
+    """function_calls 없이 텍스트만 반환하는 Gemini 응답 mock."""
+    response = MagicMock()
+    response.function_calls = None
+    response.text = text
+    return response
 
 
-def _make_tool_block(tool_id, name, input_data):
-    block = MagicMock()
-    block.type = "tool_use"
-    block.id = tool_id
-    block.name = name
-    block.input = input_data
-    return block
+def _make_function_call_response(name, args):
+    """function_call을 포함하는 Gemini 응답 mock."""
+    fc = MagicMock()
+    fc.name = name
+    fc.args = args
+
+    candidate = MagicMock()
+    candidate.content = MagicMock()
+
+    response = MagicMock()
+    response.function_calls = [fc]
+    response.candidates = [candidate]
+    return response
+
+
+def _mock_client_with(generate_content_mock):
+    """_get_client()가 반환할 mock client를 생성."""
+    mock_client = MagicMock()
+    mock_client.models.generate_content = generate_content_mock
+    return MagicMock(return_value=mock_client)
+
+
+def test_mcp_tools_to_gemini():
+    """MCP tool 목록이 Gemini FunctionDeclaration으로 변환되는지 확인."""
+    mcp_tools = [
+        {
+            "name": "get_financials",
+            "description": "재무제표 조회",
+            "input_schema": {
+                "type": "object",
+                "properties": {"corp_name": {"type": "string"}},
+                "required": ["corp_name"],
+            },
+        }
+    ]
+    gemini_tool = _mcp_tools_to_gemini(mcp_tools)
+    assert len(gemini_tool.function_declarations) == 1
+    assert gemini_tool.function_declarations[0].name == "get_financials"
 
 
 @pytest.mark.asyncio
 @patch("loop.call_mcp_tool", new_callable=AsyncMock)
 @patch("loop.list_mcp_tools", new_callable=AsyncMock)
-@patch("loop.client")
-async def test_run_agent_simple_response(mock_client, mock_list_tools, mock_call_tool):
-    """tool_use 없이 바로 end_turn하는 케이스."""
+@patch("loop._get_client")
+async def test_run_agent_simple_response(mock_get_client, mock_list_tools, mock_call_tool):
+    """function_call 없이 바로 텍스트 응답하는 케이스."""
     mock_list_tools.return_value = []
-
-    mock_response = MagicMock()
-    mock_response.stop_reason = "end_turn"
-    mock_response.content = [_make_text_block("안녕하세요!")]
-    mock_client.messages.create = MagicMock(return_value=mock_response)
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(
+        return_value=_make_text_response("안녕하세요!")
+    )
+    mock_get_client.return_value = mock_client
 
     result = await run_agent("안녕")
     assert result == "안녕하세요!"
@@ -40,70 +72,70 @@ async def test_run_agent_simple_response(mock_client, mock_list_tools, mock_call
 @pytest.mark.asyncio
 @patch("loop.call_mcp_tool", new_callable=AsyncMock)
 @patch("loop.list_mcp_tools", new_callable=AsyncMock)
-@patch("loop.client")
-async def test_run_agent_with_tool_call(mock_client, mock_list_tools, mock_call_tool):
-    """tool_use → tool_result → end_turn 흐름."""
+@patch("loop._get_client")
+async def test_run_agent_with_tool_call(mock_get_client, mock_list_tools, mock_call_tool):
+    """function_call → function_response → 텍스트 응답 흐름."""
     mock_list_tools.return_value = [
         {"name": "get_financials", "description": "재무제표", "input_schema": {}}
     ]
     mock_call_tool.return_value = "삼성전자 매출: 300조"
 
-    tool_response = MagicMock()
-    tool_response.stop_reason = "tool_use"
-    tool_response.content = [
-        _make_tool_block("tool_1", "get_financials", {"corp_name": "삼성전자", "year": "2024"})
-    ]
+    fc_response = _make_function_call_response(
+        "get_financials", {"corp_name": "삼성전자", "year": "2024"}
+    )
+    final_response = _make_text_response("삼성전자의 2024년 매출은 300조원입니다.")
 
-    final_response = MagicMock()
-    final_response.stop_reason = "end_turn"
-    final_response.content = [_make_text_block("삼성전자의 2024년 매출은 300조원입니다.")]
-
-    mock_client.messages.create = MagicMock(side_effect=[tool_response, final_response])
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(
+        side_effect=[fc_response, final_response]
+    )
+    mock_get_client.return_value = mock_client
 
     result = await run_agent("삼성전자 매출 알려줘")
     assert "300조" in result
-    mock_call_tool.assert_called_once_with("get_financials", {"corp_name": "삼성전자", "year": "2024"})
+    mock_call_tool.assert_called_once_with(
+        "get_financials", {"corp_name": "삼성전자", "year": "2024"}
+    )
 
 
 @pytest.mark.asyncio
 @patch("loop.call_mcp_tool", new_callable=AsyncMock)
 @patch("loop.list_mcp_tools", new_callable=AsyncMock)
-@patch("loop.client")
-async def test_run_agent_unexpected_stop_reason(mock_client, mock_list_tools, mock_call_tool):
-    """stop_reason이 end_turn도 tool_use도 아닌 경우 (max_tokens 등)."""
+@patch("loop._get_client")
+async def test_run_agent_empty_text(mock_get_client, mock_list_tools, mock_call_tool):
+    """response.text가 None인 경우 빈 문자열 반환."""
     mock_list_tools.return_value = []
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(
+        return_value=_make_text_response(None)
+    )
+    mock_get_client.return_value = mock_client
 
-    mock_response = MagicMock()
-    mock_response.stop_reason = "max_tokens"
-    mock_response.content = [_make_text_block("잘린 응답입니다")]
-    mock_client.messages.create = MagicMock(return_value=mock_response)
-
-    result = await run_agent("긴 질문")
-    assert result == "잘린 응답입니다"
+    result = await run_agent("테스트")
+    assert result == ""
 
 
 @pytest.mark.asyncio
 @patch("loop.call_mcp_tool", new_callable=AsyncMock)
 @patch("loop.list_mcp_tools", new_callable=AsyncMock)
-@patch("loop.client")
-async def test_run_agent_tool_call_exception(mock_client, mock_list_tools, mock_call_tool):
-    """MCP tool 호출 시 예외 발생 → tool_result에 에러 문자열 주입."""
+@patch("loop._get_client")
+async def test_run_agent_tool_call_exception(mock_get_client, mock_list_tools, mock_call_tool):
+    """MCP tool 호출 시 예외 발생 → function_response에 에러 문자열 주입."""
     mock_list_tools.return_value = [
         {"name": "get_financials", "description": "재무제표", "input_schema": {}}
     ]
     mock_call_tool.side_effect = ConnectionError("MCP 서버 연결 실패")
 
-    tool_response = MagicMock()
-    tool_response.stop_reason = "tool_use"
-    tool_response.content = [
-        _make_tool_block("tool_1", "get_financials", {"corp_name": "삼성전자", "year": "2024"})
-    ]
+    fc_response = _make_function_call_response(
+        "get_financials", {"corp_name": "삼성전자", "year": "2024"}
+    )
+    final_response = _make_text_response("도구 호출 중 오류가 발생했습니다.")
 
-    final_response = MagicMock()
-    final_response.stop_reason = "end_turn"
-    final_response.content = [_make_text_block("도구 호출 중 오류가 발생했습니다.")]
-
-    mock_client.messages.create = MagicMock(side_effect=[tool_response, final_response])
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(
+        side_effect=[fc_response, final_response]
+    )
+    mock_get_client.return_value = mock_client
 
     result = await run_agent("삼성전자 매출")
     assert "오류" in result
@@ -112,21 +144,20 @@ async def test_run_agent_tool_call_exception(mock_client, mock_list_tools, mock_
 @pytest.mark.asyncio
 @patch("loop.call_mcp_tool", new_callable=AsyncMock)
 @patch("loop.list_mcp_tools", new_callable=AsyncMock)
-@patch("loop.client")
-async def test_run_agent_max_iterations(mock_client, mock_list_tools, mock_call_tool):
+@patch("loop._get_client")
+async def test_run_agent_max_iterations(mock_get_client, mock_list_tools, mock_call_tool):
     """무한 루프 방지 — max iterations 도달."""
     mock_list_tools.return_value = [
         {"name": "get_financials", "description": "재무제표", "input_schema": {}}
     ]
     mock_call_tool.return_value = "데이터"
 
-    # Always return tool_use (never end_turn)
-    tool_response = MagicMock()
-    tool_response.stop_reason = "tool_use"
-    tool_response.content = [
-        _make_tool_block("tool_1", "get_financials", {"corp_name": "테스트", "year": "2024"})
-    ]
-    mock_client.messages.create = MagicMock(return_value=tool_response)
+    fc_response = _make_function_call_response(
+        "get_financials", {"corp_name": "테스트", "year": "2024"}
+    )
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(return_value=fc_response)
+    mock_get_client.return_value = mock_client
 
     result = await run_agent("테스트")
     assert "최대 반복" in result

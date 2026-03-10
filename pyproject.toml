@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AI Agent for Korean financial data via MCP"
 requires-python = ">=3.12"
 dependencies = [
-    "anthropic>=0.40.0",
+    "google-genai>=1.0.0",
     "mcp[cli]>=1.6.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
