@@ -8,6 +8,7 @@ from mcp.server.fastmcp import FastMCP
 
 from dart_tools import dart_financials, dart_search
 from krx_tools import krx_price
+from rag_search import rag_search
 
 mcp = FastMCP("fAInancial", stateless_http=True, host="0.0.0.0", port=8001)
 
@@ -44,6 +45,22 @@ def get_stock_price(ticker: str, start_date: str, end_date: str) -> str:
         end_date: 조회 종료일 (YYYY-MM-DD)
     """
     return krx_price(ticker, start_date, end_date)
+
+
+@mcp.tool()
+def search_documents(
+    query: str,
+    corp_name: str | None = None,
+    year: str | None = None,
+) -> str:
+    """공시 문서에서 관련 내용을 검색합니다.
+
+    Args:
+        query: 검색 질문 (예: 사업 위험 요인, 주요 투자 계획)
+        corp_name: 기업명 필터 (예: 삼성전자). 없으면 전체 검색
+        year: 사업연도 필터 (예: 2024). 없으면 전체 연도 검색
+    """
+    return rag_search(query, corp_name, year)
 
 
 if __name__ == "__main__":

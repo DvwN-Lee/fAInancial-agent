@@ -5,6 +5,8 @@ services:
       - "8001:8001"
     env_file:
       - .env
+    volumes:
+      - ./data/faiss:/app/data/faiss:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost',8001),timeout=3); s.close()"]
       interval: 10s
