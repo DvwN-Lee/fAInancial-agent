@@ -147,6 +147,18 @@ def test_dart_financials_corp_not_found():
     assert "기업 조회 오류" in result
 
 
+def test_dart_financials_corp_load_failure():
+    """_load_corp_codes에서 RequestException 발생 시 dart_financials가 에러 문자열 반환."""
+    import requests as req_lib
+
+    with patch(
+        "dart_tools.resolve_corp_code",
+        side_effect=req_lib.exceptions.ConnectionError("DART 서버 연결 불가"),
+    ):
+        result = dart_financials("삼성전자", "2024")
+    assert "기업 조회 오류" in result
+
+
 @patch("dart_tools.resolve_corp_code", return_value="00126380")
 @patch("dart_tools.requests.get")
 def test_dart_financials_network_error(mock_get, mock_resolve):

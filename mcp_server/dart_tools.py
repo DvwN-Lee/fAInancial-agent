@@ -77,7 +77,7 @@ def dart_financials(corp_name: str, year: str, report_type: str = "annual") -> s
     """DART API로 재무제표 주요계정을 조회한다."""
     try:
         corp_code = resolve_corp_code(corp_name)
-    except ValueError as e:
+    except Exception as e:
         return f"기업 조회 오류: {e}"
 
     reprt_code = REPORT_CODES.get(report_type, "11011")
