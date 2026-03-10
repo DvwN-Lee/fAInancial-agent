@@ -109,16 +109,19 @@ def download_document_zip(rcept_no: str) -> bytes:
 
 
 def extract_html_from_zip(zip_bytes: bytes) -> list[tuple[str, str]]:
-    """ZIP 바이트에서 *.html, *.htm 파일을 추출한다.
+    """ZIP 바이트에서 *.html, *.htm, *.xml 파일을 추출한다.
+
+    DART 공시 ZIP은 HTML 대신 XML(DART 전용 포맷) 형식을 사용하므로
+    .xml 확장자도 처리한다. .xbrl, .xsd 등 스키마 파일은 제외.
 
     Returns:
-        [(파일명, HTML 내용), ...] 리스트
+        [(파일명, 내용), ...] 리스트
     """
     html_files = []
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         for name in zf.namelist():
             lower = name.lower()
-            if lower.endswith(".html") or lower.endswith(".htm"):
+            if lower.endswith((".html", ".htm", ".xml")):
                 content = zf.read(name).decode("utf-8", errors="replace")
                 html_files.append((name, content))
     return html_files
