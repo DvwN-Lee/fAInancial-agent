@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 import faiss
@@ -27,7 +28,8 @@ DOCS_DIR = DATA_DIR / "documents"
 FAISS_DIR = DATA_DIR / "faiss"
 
 EMBEDDING_MODEL = "models/gemini-embedding-001"
-BATCH_SIZE = 100  # batch_embed_contents 1회당 텍스트 수
+BATCH_SIZE = 20   # Rate limit 고려: 배치당 20개
+BATCH_DELAY = 2.0  # 배치 간 대기 시간(초)
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 
@@ -40,16 +42,27 @@ def _get_genai_client() -> genai.Client:
 
 
 def _batch_embed(client: genai.Client, texts: list[str]) -> list[list[float]]:
-    """batch_embed_contents로 다수 텍스트를 한 번에 임베딩한다."""
+    """다수 텍스트를 배치로 임베딩한다. Rate limit 대응 재시도 포함."""
     all_embeddings = []
     for i in range(0, len(texts), BATCH_SIZE):
         batch = texts[i : i + BATCH_SIZE]
-        result = client.models.embed_content(
-            model=EMBEDDING_MODEL,
-            contents=batch,
-        )
-        all_embeddings.extend([e.values for e in result.embeddings])
-        print(f"  임베딩 {len(all_embeddings)}/{len(texts)} 완료")
+        for attempt in range(5):
+            try:
+                result = client.models.embed_content(
+                    model=EMBEDDING_MODEL,
+                    contents=batch,
+                )
+                all_embeddings.extend([e.values for e in result.embeddings])
+                print(f"  임베딩 {len(all_embeddings)}/{len(texts)} 완료")
+                break
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    wait = BATCH_DELAY * (2 ** attempt)
+                    print(f"  Rate limit, {wait:.0f}초 대기 후 재시도...")
+                    time.sleep(wait)
+                else:
+                    raise
+        time.sleep(BATCH_DELAY)  # 배치 간 기본 대기
     return all_embeddings
 
 
