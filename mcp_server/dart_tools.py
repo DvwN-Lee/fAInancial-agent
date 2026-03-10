@@ -55,3 +55,70 @@ def resolve_corp_code(corp_name: str) -> str:
     if len(matches) > 1:
         raise ValueError(f"여러 기업이 매칭됩니다: {matches[:5]}")
     raise ValueError(f"'{corp_name}' 기업을 찾을 수 없습니다")
+
+
+REPORT_CODES = {
+    "annual": "11011",
+    "q1": "11013",
+    "half": "11012",
+    "q3": "11014",
+}
+
+
+def dart_financials(corp_name: str, year: str, report_type: str = "annual") -> str:
+    """DART API로 재무제표 주요계정을 조회한다."""
+    corp_code = resolve_corp_code(corp_name)
+    reprt_code = REPORT_CODES.get(report_type, "11011")
+
+    resp = requests.get(
+        f"{DART_BASE_URL}/fnlttSinglAcnt.json",
+        params={
+            "crtfc_key": DART_API_KEY,
+            "corp_code": corp_code,
+            "bsns_year": year,
+            "reprt_code": reprt_code,
+        },
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    if data.get("status") != "000":
+        return f"DART API 오류: {data.get('message', '알 수 없는 오류')}"
+
+    lines = [f"[{corp_name}] {year}년 재무제표 ({report_type})"]
+    for item in data.get("list", []):
+        name = item.get("account_nm", "")
+        current = item.get("thstrm_amount", "")
+        prev = item.get("frmtrm_amount", "")
+        lines.append(f"  {name}: 당기 {current} / 전기 {prev}")
+
+    return "\n".join(lines)
+
+
+def dart_search(keyword: str, page_count: int = 10) -> str:
+    """DART 공시 검색."""
+    resp = requests.get(
+        f"{DART_BASE_URL}/list.json",
+        params={
+            "crtfc_key": DART_API_KEY,
+            "corp_name": keyword,
+            "page_count": str(page_count),
+        },
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    if data.get("status") != "000":
+        return f"DART API 오류: {data.get('message', '알 수 없는 오류')}"
+
+    total = data.get("total_count", 0)
+    lines = [f"'{keyword}' 공시 검색 결과: {total}건"]
+    for item in data.get("list", []):
+        name = item.get("corp_name", "")
+        report = item.get("report_nm", "")
+        date = item.get("rcept_dt", "")
+        lines.append(f"  [{date}] {name} - {report}")
+
+    return "\n".join(lines)
