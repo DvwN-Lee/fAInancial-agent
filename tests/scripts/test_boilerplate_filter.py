@@ -40,14 +40,30 @@ def test_short_text_is_boilerplate():
     assert _is_boilerplate("") is True
 
 
-def test_single_marker_not_boilerplate():
-    """마커가 1개만 있으면 보일러플레이트가 아니다 (본문에 언급 가능)."""
+def test_weak_single_marker_not_boilerplate():
+    """Weak 마커가 1개만 있으면 보일러플레이트가 아니다 (본문에 언급 가능)."""
     text = (
         "금융위원회의 규정에 따라 사업보고서를 제출합니다. "
         "당사의 주요 사업 현황과 재무제표를 아래와 같이 보고합니다. "
         "반도체 사업부문의 매출은 전년 대비 증가하였습니다."
     )
     assert _is_boilerplate(text) is False
+
+
+def test_strong_single_marker_is_boilerplate():
+    """Strong 마커는 1개만 있어도 즉시 보일러플레이트로 판별된다."""
+    ceo_confirm = (
+        "【 대표이사 등의 확인 】 "
+        "본인은 당해 사업보고서의 기재사항이 사실과 다름없다고 확인합니다. "
+        "대표이사 이재용"
+    )
+    assert _is_boilerplate(ceo_confirm) is True
+
+    toc_heading = (
+        "목     차 삼성전자 사업보고서 제55기 "
+        "I. 회사의 개요 II. 사업의 내용 III. 재무에 관한 사항"
+    )
+    assert _is_boilerplate(toc_heading) is True
 
 
 def test_subsidiary_table_is_boilerplate():

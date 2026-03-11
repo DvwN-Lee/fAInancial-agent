@@ -36,7 +36,14 @@ CHUNK_OVERLAP = 100
 
 _TRANSIENT_ERRORS = ("429", "rate_limit", "RateLimitError", "timeout", "Timeout", "ConnectionError")
 
-# DART 보고서 표지/목차 보일러플레이트 마커 (2개 이상 매칭 시 필터링)
+# DART 보고서 표지/목차 보일러플레이트 마커
+# Strong: 1개만 있어도 즉시 보일러플레이트 판별 (본문에 등장할 가능성 없는 고유 헤딩)
+_STRONG_BOILERPLATE_MARKERS = [
+    "【 대표이사 등의 확인 】",
+    "목     차",
+]
+
+# Weak: 2개 이상 매칭 시 보일러플레이트 판별 (본문 언급 가능성 있는 마커)
 _BOILERPLATE_MARKERS = [
     "금융위원회",
     "한국거래소 귀중",
@@ -44,7 +51,6 @@ _BOILERPLATE_MARKERS = [
     "면제사유발생",
     "작  성  책  임  자",
     "대   표    이   사",
-    "【 대표이사 등의 확인 】",
 ]
 
 # 최소 의미 있는 텍스트 길이 (한글 기준, 이 이하는 인덱싱 제외)
@@ -62,6 +68,10 @@ def _is_boilerplate(text: str) -> bool:
     stripped = text.strip()
     if len(stripped) < _MIN_CHUNK_LENGTH:
         return True
+    # Strong 마커: 1개만 있어도 즉시 보일러플레이트
+    if any(mk in text for mk in _STRONG_BOILERPLATE_MARKERS):
+        return True
+    # Weak 마커: 2개 이상 매칭 시 보일러플레이트
     markers_found = sum(1 for mk in _BOILERPLATE_MARKERS if mk in text)
     if markers_found >= 2:
         return True
