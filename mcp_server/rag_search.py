@@ -21,7 +21,10 @@ _voyage_client: voyageai.Client | None = None
 def _get_voyage_client() -> voyageai.Client:
     global _voyage_client
     if _voyage_client is None:
-        _voyage_client = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY", ""))
+        api_key = os.getenv("VOYAGE_API_KEY", "")
+        if not api_key:
+            raise ValueError("VOYAGE_API_KEY 환경변수가 설정되지 않았습니다")
+        _voyage_client = voyageai.Client(api_key=api_key)
     return _voyage_client
 
 
@@ -71,10 +74,12 @@ def rag_search(
     try:
         index = _get_index()
         metadata = _load_metadata()
+        query_vec = np.array([_embed_query(query)], dtype=np.float32)
     except FileNotFoundError as e:
         return str(e)
+    except Exception as e:
+        return f"검색 오류: {e}"
 
-    query_vec = np.array([_embed_query(query)], dtype=np.float32)
     faiss.normalize_L2(query_vec)
 
     # 오버페칭 후 post-filter
@@ -83,7 +88,7 @@ def rag_search(
 
     results = []
     for dist, idx in zip(distances[0], indices[0]):
-        if idx == -1:
+        if idx == -1 or idx >= len(metadata):
             continue
         meta = metadata[idx]
 

@@ -6,7 +6,20 @@ import faiss
 import numpy as np
 import pytest
 
+import rag_search as rag_module
 from rag_search import _load_metadata, rag_search
+
+
+@pytest.fixture(autouse=True)
+def reset_rag_globals():
+    """각 테스트 전후로 모듈 레벨 캐시를 초기화한다."""
+    rag_module._index = None
+    rag_module._metadata = None
+    rag_module._voyage_client = None
+    yield
+    rag_module._index = None
+    rag_module._metadata = None
+    rag_module._voyage_client = None
 
 
 @pytest.fixture
@@ -44,9 +57,7 @@ def test_rag_search_filters_by_corp(fake_faiss_dir):
     fake_embedding = np.random.rand(1024).astype(np.float32).tolist()
 
     with patch("rag_search.FAISS_DIR", fake_faiss_dir), \
-         patch("rag_search._embed_query", return_value=fake_embedding), \
-         patch("rag_search._index", None), \
-         patch("rag_search._metadata", None):
+         patch("rag_search._embed_query", return_value=fake_embedding):
         result = rag_search("위험 요인", corp_name="LG화학")
 
     assert "LG화학" in result

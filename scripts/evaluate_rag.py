@@ -90,7 +90,7 @@ def main():
     dataset = EvaluationDataset(samples=samples)
 
     # RAGAS 평가 (Gemini LLM 사용)
-    evaluator_llm = llm_factory("gemini-2.0-flash", provider="google")
+    evaluator_llm = llm_factory(os.getenv("GEMINI_MODEL", "gemini-2.5-flash"), provider="google")
 
     metrics = [
         Faithfulness(llm=evaluator_llm),

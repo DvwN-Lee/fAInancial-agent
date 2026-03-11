@@ -39,3 +39,31 @@ async def test_list_mcp_tools_returns_list():
         assert len(tools) == 1
         assert tools[0]["name"] == "get_financials"
         assert "input_schema" in tools[0]
+
+
+@pytest.mark.asyncio
+async def test_call_mcp_tool_returns_text():
+    mock_block = MagicMock()
+    mock_block.text = "삼성전자 2024 재무 결과"
+
+    mock_result = MagicMock()
+    mock_result.content = [mock_block]
+
+    mock_session = AsyncMock()
+    mock_session.initialize = AsyncMock()
+    mock_session.call_tool = AsyncMock(return_value=mock_result)
+
+    with patch("mcp_client.streamable_http_client") as mock_client, \
+         patch("mcp_client.ClientSession") as mock_session_cls:
+        mock_client.return_value.__aenter__ = AsyncMock(
+            return_value=(MagicMock(), MagicMock(), MagicMock())
+        )
+        mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_session_cls.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        result = await call_mcp_tool("get_financials", {"corp_name": "삼성전자", "year": "2024"})
+        assert "삼성전자" in result
+        mock_session.call_tool.assert_called_once_with(
+            "get_financials", {"corp_name": "삼성전자", "year": "2024"}
+        )
