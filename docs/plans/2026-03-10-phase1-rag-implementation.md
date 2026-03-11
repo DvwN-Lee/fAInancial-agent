@@ -6,7 +6,7 @@
 
 **Architecture:** 오프라인 CLI 인덱서(DART ZIP→HTML 파싱→청킹→Voyage AI 배치 임베딩→FAISS)와 온라인 MCP Tool(FAISS 검색→청크 반환)로 분리. Agent 코드 변경 제로.
 
-**Tech Stack:** Python 3.12, BeautifulSoup4, faiss-cpu, voyageai (voyage-3.5-lite), RAGAS, FastMCP
+**Tech Stack:** Python 3.12, BeautifulSoup4, faiss-cpu, voyageai (voyage-finance-2), RAGAS, FastMCP
 
 **Design Doc:** `docs/plans/2026-03-10-phase1-rag-design.md`
 
@@ -530,7 +530,7 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 DOCS_DIR = DATA_DIR / "documents"
 FAISS_DIR = DATA_DIR / "faiss"
 
-EMBEDDING_MODEL = "voyage-3.5-lite"
+EMBEDDING_MODEL = "voyage-finance-2"
 BATCH_SIZE = 128  # Voyage AI 배치 크기
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
@@ -800,7 +800,7 @@ import numpy as np
 import voyageai
 
 FAISS_DIR = Path(__file__).parent.parent / "data" / "faiss"
-EMBEDDING_MODEL = "voyage-3.5-lite"
+EMBEDDING_MODEL = "voyage-finance-2"
 TOP_K = 5
 SEARCH_MULTIPLIER = 3  # post-filter용 오버페칭 배수
 

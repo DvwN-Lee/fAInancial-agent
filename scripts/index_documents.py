@@ -7,6 +7,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -34,6 +35,56 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 
 _TRANSIENT_ERRORS = ("429", "rate_limit", "RateLimitError", "timeout", "Timeout", "ConnectionError")
+
+# DART 보고서 표지/목차 보일러플레이트 마커
+# Strong: 1개만 있어도 즉시 보일러플레이트 판별 (본문에 등장할 가능성 없는 고유 헤딩)
+_STRONG_BOILERPLATE_MARKERS = [
+    "【 대표이사 등의 확인 】",
+    "목     차",
+]
+
+# Weak: 2개 이상 매칭 시 보일러플레이트 판별 (본문 언급 가능성 있는 마커)
+_BOILERPLATE_MARKERS = [
+    "금융위원회",
+    "한국거래소 귀중",
+    "제출대상법인",
+    "면제사유발생",
+    "작  성  책  임  자",
+    "대   표    이   사",
+]
+
+# 최소 의미 있는 텍스트 길이 (한글 기준, 이 이하는 인덱싱 제외)
+_MIN_CHUNK_LENGTH = 50
+
+# 법인명 접미사 패턴 — 자회사/종속기업 목록 탐지용
+_CORP_SUFFIX_RE = re.compile(
+    r"Co\., Ltd\.|Inc\.|GmbH|S\.A\.|B\.V\.|Pte\. Ltd\.|Ltda\.|Sdn\. Bhd\.|S\.P\.A\.|㈜|\(주\)"
+)
+_CORP_SUFFIX_THRESHOLD = 5  # 이 이상이면 법인명 목록으로 판단
+
+
+def _is_boilerplate(text: str) -> bool:
+    """DART 보고서 표지/목차 등 검색에 무의미한 보일러플레이트인지 판별한다."""
+    stripped = text.strip()
+    if len(stripped) < _MIN_CHUNK_LENGTH:
+        return True
+    # Strong 마커: 1개만 있어도 즉시 보일러플레이트
+    if any(mk in text for mk in _STRONG_BOILERPLATE_MARKERS):
+        return True
+    # Weak 마커: 2개 이상 매칭 시 보일러플레이트
+    markers_found = sum(1 for mk in _BOILERPLATE_MARKERS if mk in text)
+    if markers_found >= 2:
+        return True
+    # 테이블형 데이터 필터: 줄이 많고 평균 줄 길이가 짧으면 테이블/목록
+    lines = stripped.split("\n")
+    if len(lines) >= 10:
+        avg_line_len = sum(len(l) for l in lines) / len(lines)
+        if avg_line_len < 20:
+            return True
+    # 법인명 목록 필터: 자회사/종속기업 나열 청크
+    if len(_CORP_SUFFIX_RE.findall(text)) >= _CORP_SUFFIX_THRESHOLD:
+        return True
+    return False
 
 
 def _get_voyage_client() -> voyageai.Client:
@@ -159,6 +210,8 @@ def index_corp(
 
             chunks = chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP)
             for chunk in chunks:
+                if _is_boilerplate(chunk):
+                    continue
                 all_chunks.append({
                     "corp_name": corp_name,
                     "year": year,
