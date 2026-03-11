@@ -26,7 +26,12 @@ SYSTEM_PROMPT = (
     "당신은 한국 금융 데이터 분석 AI 어시스턴트입니다. "
     "DART 전자공시와 KRX 주가 데이터를 조회하는 도구를 사용하여 "
     "사용자의 질문에 정확하게 답변하세요. "
-    "데이터를 조회한 후에는 핵심 수치를 포함하여 명확하게 요약해주세요."
+    "데이터를 조회한 후에는 핵심 수치를 포함하여 명확하게 요약해주세요.\n\n"
+    "종합 분석을 요청받으면 다음 도구를 모두 활용하세요:\n"
+    "1. get_financials — 재무제표 데이터\n"
+    "2. get_stock_price — 최근 주가 동향\n"
+    "3. search_documents — 공시 원문에서 사업 위험, 전망 등\n"
+    "결과를 [재무 현황], [주가 동향], [주요 공시 내용] 섹션으로 구분하여 리포트를 작성하세요."
 )
 
 MAX_ITERATIONS = 10
@@ -46,17 +51,25 @@ def _mcp_tools_to_gemini(mcp_tools: list[dict]) -> types.Tool:
     return types.Tool(function_declarations=declarations)
 
 
-async def run_agent(user_message: str) -> str:
-    """Agent Loop: Gemini API + MCP Tool 연동."""
+async def run_agent(
+    user_message: str,
+    history: list[types.Content] | None = None,
+) -> tuple[str, list[types.Content]]:
+    """Agent Loop: Gemini API + MCP Tool 연동.
+
+    Returns:
+        (응답 텍스트, 전체 contents) 튜플.
+    """
     mcp_tools = await list_mcp_tools()
     gemini_tool = _mcp_tools_to_gemini(mcp_tools)
 
-    contents = [
+    contents = list(history) if history else []
+    contents.append(
         types.Content(
             role="user",
             parts=[types.Part.from_text(text=user_message)],
         )
-    ]
+    )
 
     config = types.GenerateContentConfig(
         tools=[gemini_tool],
@@ -74,7 +87,7 @@ async def run_agent(user_message: str) -> str:
         )
 
         if not response.function_calls:
-            return response.text or ""
+            return response.text or "", contents
 
         # function_call 처리
         function_call_content = response.candidates[0].content
@@ -98,4 +111,4 @@ async def run_agent(user_message: str) -> str:
             types.Content(role="tool", parts=function_response_parts)
         )
 
-    return "최대 반복 횟수에 도달했습니다. 다시 시도해주세요."
+    return "최대 반복 횟수에 도달했습니다. 다시 시도해주세요.", contents

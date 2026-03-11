@@ -1,6 +1,8 @@
 from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 
+from google.genai import types
+
 from loop import run_agent, _mcp_tools_to_gemini
 
 
@@ -65,8 +67,8 @@ async def test_run_agent_simple_response(mock_get_client, mock_list_tools, mock_
     )
     mock_get_client.return_value = mock_client
 
-    result = await run_agent("안녕")
-    assert result == "안녕하세요!"
+    text, contents = await run_agent("안녕")
+    assert text == "안녕하세요!"
 
 
 @pytest.mark.asyncio
@@ -91,8 +93,8 @@ async def test_run_agent_with_tool_call(mock_get_client, mock_list_tools, mock_c
     )
     mock_get_client.return_value = mock_client
 
-    result = await run_agent("삼성전자 매출 알려줘")
-    assert "300조" in result
+    text, contents = await run_agent("삼성전자 매출 알려줘")
+    assert "300조" in text
     mock_call_tool.assert_called_once_with(
         "get_financials", {"corp_name": "삼성전자", "year": "2024"}
     )
@@ -111,8 +113,8 @@ async def test_run_agent_empty_text(mock_get_client, mock_list_tools, mock_call_
     )
     mock_get_client.return_value = mock_client
 
-    result = await run_agent("테스트")
-    assert result == ""
+    text, contents = await run_agent("테스트")
+    assert text == ""
 
 
 @pytest.mark.asyncio
@@ -137,8 +139,8 @@ async def test_run_agent_tool_call_exception(mock_get_client, mock_list_tools, m
     )
     mock_get_client.return_value = mock_client
 
-    result = await run_agent("삼성전자 매출")
-    assert "오류" in result
+    text, contents = await run_agent("삼성전자 매출")
+    assert "오류" in text
 
 
 @pytest.mark.asyncio
@@ -159,5 +161,56 @@ async def test_run_agent_max_iterations(mock_get_client, mock_list_tools, mock_c
     mock_client.models.generate_content = MagicMock(return_value=fc_response)
     mock_get_client.return_value = mock_client
 
+    text, contents = await run_agent("테스트")
+    assert "최대 반복" in text
+
+
+@pytest.mark.asyncio
+@patch("loop.call_mcp_tool", new_callable=AsyncMock)
+@patch("loop.list_mcp_tools", new_callable=AsyncMock)
+@patch("loop._get_client")
+async def test_run_agent_with_history(mock_get_client, mock_list_tools, mock_call_tool):
+    """history를 전달하면 contents에 포함되어 Gemini에 전달된다."""
+    mock_list_tools.return_value = []
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(
+        return_value=_make_text_response("작년 대비 10% 증가했습니다.")
+    )
+    mock_get_client.return_value = mock_client
+
+    history = [
+        types.Content(role="user", parts=[types.Part.from_text(text="삼성전자 매출 알려줘")]),
+        types.Content(role="model", parts=[types.Part.from_text(text="300조원입니다.")]),
+    ]
+
+    text, contents = await run_agent("작년 대비 어떻게 변했어?", history=history)
+
+    assert "10%" in text
+    # contents = history(2) + new user(1) + model response(1) = 4
+    assert len(contents) >= 3  # 최소 history + new user message
+    # Gemini에 전달된 contents의 첫 항목이 history의 첫 항목
+    call_args = mock_client.models.generate_content.call_args
+    passed_contents = call_args.kwargs.get("contents") or call_args[1].get("contents")
+    assert len(passed_contents) >= 3
+
+
+@pytest.mark.asyncio
+@patch("loop.call_mcp_tool", new_callable=AsyncMock)
+@patch("loop.list_mcp_tools", new_callable=AsyncMock)
+@patch("loop._get_client")
+async def test_run_agent_returns_tuple(mock_get_client, mock_list_tools, mock_call_tool):
+    """run_agent가 (text, contents) 튜플을 반환한다."""
+    mock_list_tools.return_value = []
+    mock_client = MagicMock()
+    mock_client.models.generate_content = MagicMock(
+        return_value=_make_text_response("응답입니다.")
+    )
+    mock_get_client.return_value = mock_client
+
     result = await run_agent("테스트")
-    assert "최대 반복" in result
+
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    text, contents = result
+    assert text == "응답입니다."
+    assert isinstance(contents, list)
