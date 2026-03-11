@@ -35,6 +35,28 @@ CHUNK_OVERLAP = 100
 
 _TRANSIENT_ERRORS = ("429", "rate_limit", "RateLimitError", "timeout", "Timeout", "ConnectionError")
 
+# DART 보고서 표지/목차 보일러플레이트 마커 (2개 이상 매칭 시 필터링)
+_BOILERPLATE_MARKERS = [
+    "금융위원회",
+    "한국거래소 귀중",
+    "제출대상법인",
+    "면제사유발생",
+    "작  성  책  임  자",
+    "대   표    이   사",
+    "【 대표이사 등의 확인 】",
+]
+
+# 최소 의미 있는 텍스트 길이 (한글 기준, 이 이하는 인덱싱 제외)
+_MIN_CHUNK_LENGTH = 50
+
+
+def _is_boilerplate(text: str) -> bool:
+    """DART 보고서 표지/목차 등 검색에 무의미한 보일러플레이트인지 판별한다."""
+    if len(text.strip()) < _MIN_CHUNK_LENGTH:
+        return True
+    markers_found = sum(1 for mk in _BOILERPLATE_MARKERS if mk in text)
+    return markers_found >= 2
+
 
 def _get_voyage_client() -> voyageai.Client:
     api_key = os.getenv("VOYAGE_API_KEY", "")
@@ -159,6 +181,8 @@ def index_corp(
 
             chunks = chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP)
             for chunk in chunks:
+                if _is_boilerplate(chunk):
+                    continue
                 all_chunks.append({
                     "corp_name": corp_name,
                     "year": year,
