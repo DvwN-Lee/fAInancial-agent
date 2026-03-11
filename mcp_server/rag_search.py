@@ -9,7 +9,7 @@ import numpy as np
 import voyageai
 
 FAISS_DIR = Path(__file__).parent.parent / "data" / "faiss"
-EMBEDDING_MODEL = "voyage-3.5-lite"
+EMBEDDING_MODEL = "voyage-finance-2"
 TOP_K = 5
 SEARCH_MULTIPLIER = 3  # post-filter용 오버페칭 배수
 

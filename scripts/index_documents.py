@@ -28,7 +28,7 @@ DOCS_DIR = DATA_DIR / "documents"
 FAISS_DIR = DATA_DIR / "faiss"
 CHECKPOINT_PATH = FAISS_DIR / "checkpoint.json"
 
-EMBEDDING_MODEL = "voyage-3.5-lite"
+EMBEDDING_MODEL = "voyage-finance-2"
 BATCH_SIZE = 128  # Voyage AI 배치 크기
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
