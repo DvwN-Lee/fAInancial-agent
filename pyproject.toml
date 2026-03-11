@@ -1,0 +1,37 @@
+[project]
+name = "fainancial-agent"
+version = "0.1.0"
+description = "AI Agent for Korean financial data via MCP"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=1.0.0",
+    "mcp[cli]>=1.6.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "pydantic>=2.0.0",
+    "requests>=2.31.0",
+    "finance-datareader>=0.9.0",
+    "faiss-cpu>=1.13.2",
+    "numpy>=2.4.3",
+    "voyageai>=0.3.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+]
+scripts = [
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "faiss-cpu>=1.13.2",
+    "numpy>=2.0.0",
+    "voyageai>=0.3.0",
+    "ragas>=0.2.0",
+    "requests>=2.31.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

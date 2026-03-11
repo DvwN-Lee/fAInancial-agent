@@ -50,3 +50,9 @@ dist/
 
 # --- Rust ---
 # target/
+
+# --- Data (인덱스·다운로드 파일은 버전 관리 제외) ---
+data/documents/*
+data/faiss/*
+data/eval/results_*.json
+!data/**/.gitkeep
