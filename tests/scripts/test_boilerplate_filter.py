@@ -48,3 +48,59 @@ def test_single_marker_not_boilerplate():
         "반도체 사업부문의 매출은 전년 대비 증가하였습니다."
     )
     assert _is_boilerplate(text) is False
+
+
+def test_subsidiary_table_is_boilerplate():
+    """자회사 소유지분 테이블은 보일러플레이트로 판별된다."""
+    table = "\n".join([
+        "삼성전자(주)",
+        "Samsung Electronics Italia S.P.A.",
+        "100.0",
+        "삼성전자(주)",
+        "Samsung Electronics Iberia, S.A.",
+        "100.0",
+        "삼성전자(주)",
+        "Samsung Electronics (UK) Ltd.",
+        "100.0",
+        "삼성전자(주)",
+        "Samsung Electronics Canada, Inc.",
+        "100.0",
+    ])
+    assert _is_boilerplate(table) is True
+
+
+def test_narrative_with_linebreaks_not_boilerplate():
+    """줄바꿈이 있어도 서술형 텍스트는 보일러플레이트가 아니다."""
+    text = (
+        "당사는 영업활동에서 파생되는 시장위험, 신용위험, 유동성위험 등을 "
+        "최소화하는데 중점을 두고 재무위험을 관리하고 있습니다.\n"
+        "당사 재무위험관리의 주요 대상인 자산은 현금및현금성자산, 단기금융상품, "
+        "상각후원가금융자산, 매출채권 등으로 구성되어 있습니다.\n"
+        "부채는 매입채무, 차입금 등으로 구성되어 있습니다."
+    )
+    assert _is_boilerplate(text) is False
+
+
+def test_corp_name_list_is_boilerplate():
+    """법인명 접미사가 5개 이상이면 자회사 목록으로 판별된다."""
+    text = (
+        "Samsung Electronics Italia S.P.A.\n"
+        "Samsung Electronics Iberia, S.A.\n"
+        "Samsung (CHINA) Investment Co., Ltd. (SCIC)\n"
+        "Samsung Semiconductor, Inc. (SSI)\n"
+        "Samsung Display Vietnam Co., Ltd. (SDV)\n"
+        "Samsung Eletronica da Amazonia Ltda. (SEDA)\n"
+        "Samsung Electronics GmbH (SEG)"
+    )
+    assert _is_boilerplate(text) is True
+
+
+def test_few_corp_names_not_boilerplate():
+    """법인명 접미사가 4개 이하면 본문 언급으로 허용된다."""
+    text = (
+        "당사의 주요 종속기업으로는 Samsung Semiconductor, Inc.와 "
+        "Samsung Display Co., Ltd.가 있으며, 이들 법인은 반도체 및 "
+        "디스플레이 사업을 영위하고 있습니다. 또한 Samsung Electronics "
+        "America, Inc.를 통해 북미 시장을 공략하고 있습니다."
+    )
+    assert _is_boilerplate(text) is False
