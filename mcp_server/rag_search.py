@@ -6,23 +6,23 @@ from pathlib import Path
 
 import faiss
 import numpy as np
-from google import genai
+import voyageai
 
 FAISS_DIR = Path(__file__).parent.parent / "data" / "faiss"
-EMBEDDING_MODEL = "models/gemini-embedding-001"
+EMBEDDING_MODEL = "voyage-3.5-lite"
 TOP_K = 5
 SEARCH_MULTIPLIER = 3  # post-filter용 오버페칭 배수
 
 _index: faiss.Index | None = None
 _metadata: list[dict] | None = None
-_genai_client: genai.Client | None = None
+_voyage_client: voyageai.Client | None = None
 
 
-def _get_genai_client() -> genai.Client:
-    global _genai_client
-    if _genai_client is None:
-        _genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-    return _genai_client
+def _get_voyage_client() -> voyageai.Client:
+    global _voyage_client
+    if _voyage_client is None:
+        _voyage_client = voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY", ""))
+    return _voyage_client
 
 
 def _get_index() -> faiss.Index:
@@ -52,12 +52,13 @@ def _load_metadata(path: Path | None = None) -> list[dict]:
 
 def _embed_query(query: str) -> list[float]:
     """쿼리를 임베딩한다."""
-    client = _get_genai_client()
-    result = client.models.embed_content(
+    client = _get_voyage_client()
+    result = client.embed(
+        [query],
         model=EMBEDDING_MODEL,
-        contents=query,
+        input_type="query",
     )
-    return result.embeddings[0].values
+    return result.embeddings[0]
 
 
 def rag_search(

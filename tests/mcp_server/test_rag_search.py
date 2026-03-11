@@ -12,7 +12,7 @@ from rag_search import _load_metadata, rag_search
 @pytest.fixture
 def fake_faiss_dir(tmp_path):
     """3개 청크를 가진 테스트용 FAISS 인덱스를 생성한다."""
-    dim = 768
+    dim = 1024
     vectors = np.random.rand(3, dim).astype(np.float32)
     faiss.normalize_L2(vectors)
     index = faiss.IndexFlatIP(dim)
@@ -41,7 +41,7 @@ def test_load_metadata(fake_faiss_dir):
 
 def test_rag_search_filters_by_corp(fake_faiss_dir):
     """corp_name 필터가 동작하는지 확인."""
-    fake_embedding = np.random.rand(768).astype(np.float32).tolist()
+    fake_embedding = np.random.rand(1024).astype(np.float32).tolist()
 
     with patch("rag_search.FAISS_DIR", fake_faiss_dir), \
          patch("rag_search._embed_query", return_value=fake_embedding), \
