@@ -131,8 +131,9 @@ def main():
         print(f"\n  === {name} 평가 ({mi+1}/{len(metric_configs)}) ===")
         sample_scores = []
         for si, sample in enumerate(samples):
-            print(f"  RPM 리셋 대기 (60초)...")
-            time.sleep(60)
+            if si > 0:
+                print(f"  RPM 리셋 대기 (60초)...")
+                time.sleep(60)
             print(f"    [{si+1}/{len(samples)}] 평가 중...")
             single_dataset = EvaluationDataset(samples=[sample])
             try:
@@ -141,7 +142,7 @@ def main():
                 sample_scores.append(val)
                 print(f"    점수: {val:.3f}")
             except Exception as e:
-                print(f"    실패: {e}")
+                print(f"    실패: {type(e).__name__}: {e}")
                 sample_scores.append(float("nan"))
         valid = [s for s in sample_scores if s == s]  # NaN 제외
         avg = sum(valid) / len(valid) if valid else float("nan")

@@ -8,16 +8,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "mcp_server"))
 
 from rag_search import rag_search as _rag_search
 
+_ERROR_PREFIXES = ("검색 오류:", "검색 결과 없음")
 
-def search_documents_local(
-    query: str,
-    corp_name: str | None = None,
-    year: str | None = None,
-) -> list[str]:
-    """rag_search를 호출하고 청크 텍스트 리스트로 반환한다."""
-    result = _rag_search(query, corp_name, year)
 
-    # "내용: ..." 블록 추출 (멀티라인 — 다음 "---" 구분자까지)
+def _parse_contexts(result: str) -> list[str]:
+    """rag_search 결과 문자열에서 '내용:' 블록들을 추출한다."""
     contexts = []
     lines = result.split("\n")
     i = 0
@@ -31,5 +26,22 @@ def search_documents_local(
             contexts.append("\n".join(block).strip())
         else:
             i += 1
+    return contexts
 
-    return contexts if contexts else [result]
+
+def search_documents_local(
+    query: str,
+    corp_name: str | None = None,
+    year: str | None = None,
+) -> list[str]:
+    """rag_search를 호출하고 청크 텍스트 리스트로 반환한다."""
+    result = _rag_search(query, corp_name, year)
+
+    if any(result.startswith(p) for p in _ERROR_PREFIXES):
+        print(f"  [WARN] rag_search 에러: {result[:80]}")
+        return []
+
+    contexts = _parse_contexts(result)
+    if not contexts:
+        print(f"  [WARN] 파싱된 컨텍스트 없음: {result[:80]}")
+    return contexts
