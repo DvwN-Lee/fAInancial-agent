@@ -6,9 +6,9 @@ from main import app
 
 
 @pytest.mark.asyncio
-@patch("main.run_agent", new_callable=AsyncMock)
-async def test_chat_endpoint(mock_run_agent):
-    mock_run_agent.return_value = ("삼성전자의 2024년 매출은 300조원입니다.", [])
+@patch("main.run_graph", new_callable=AsyncMock)
+async def test_chat_endpoint(mock_run_graph):
+    mock_run_graph.return_value = "삼성전자의 2024년 매출은 300조원입니다."
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -20,9 +20,9 @@ async def test_chat_endpoint(mock_run_agent):
 
 
 @pytest.mark.asyncio
-@patch("main.run_agent", new_callable=AsyncMock)
-async def test_chat_endpoint_error(mock_run_agent):
-    mock_run_agent.side_effect = RuntimeError("MCP 서버 연결 실패")
+@patch("main.run_graph", new_callable=AsyncMock)
+async def test_chat_endpoint_error(mock_run_graph):
+    mock_run_graph.side_effect = RuntimeError("MCP 서버 연결 실패")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -43,10 +43,10 @@ async def test_health_endpoint():
 
 
 @pytest.mark.asyncio
-@patch("main.run_agent", new_callable=AsyncMock)
-async def test_chat_returns_session_id(mock_run_agent):
+@patch("main.run_graph", new_callable=AsyncMock)
+async def test_chat_returns_session_id(mock_run_graph):
     """session_id 없이 요청 시 새 session_id가 반환된다."""
-    mock_run_agent.return_value = ("응답입니다.", [])
+    mock_run_graph.return_value = "응답입니다."
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -59,18 +59,16 @@ async def test_chat_returns_session_id(mock_run_agent):
 
 
 @pytest.mark.asyncio
-@patch("main.run_agent", new_callable=AsyncMock)
-async def test_chat_session_continuity(mock_run_agent):
+@patch("main.run_graph", new_callable=AsyncMock)
+async def test_chat_session_continuity(mock_run_graph):
     """session_id를 전달하면 동일 session_id가 반환된다."""
-    mock_run_agent.return_value = ("응답입니다.", [])
+    mock_run_graph.return_value = "응답입니다."
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # 첫 요청 — 새 세션
         resp1 = await client.post("/chat", json={"message": "삼성전자 매출"})
         sid = resp1.json()["session_id"]
 
-        # 후속 요청 — 기존 세션
         resp2 = await client.post(
             "/chat", json={"message": "작년 대비?", "session_id": sid}
         )
@@ -80,10 +78,10 @@ async def test_chat_session_continuity(mock_run_agent):
 
 
 @pytest.mark.asyncio
-@patch("main.run_agent", new_callable=AsyncMock)
-async def test_chat_without_session_id_backward_compatible(mock_run_agent):
+@patch("main.run_graph", new_callable=AsyncMock)
+async def test_chat_without_session_id_backward_compatible(mock_run_graph):
     """session_id 없이도 정상 동작 (하위 호환성)."""
-    mock_run_agent.return_value = ("응답입니다.", [])
+    mock_run_graph.return_value = "응답입니다."
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -91,3 +89,18 @@ async def test_chat_without_session_id_backward_compatible(mock_run_agent):
 
     assert resp.status_code == 200
     assert resp.json()["response"] == "응답입니다."
+
+
+@pytest.mark.asyncio
+@patch("main.run_graph", new_callable=AsyncMock)
+async def test_chat_passes_session_id_to_graph(mock_run_graph):
+    """main.py가 session_id를 run_graph에 전달한다."""
+    mock_run_graph.return_value = "응답"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post(
+            "/chat", json={"message": "테스트", "session_id": "my-session"}
+        )
+
+    mock_run_graph.assert_called_once_with("테스트", session_id="my-session")

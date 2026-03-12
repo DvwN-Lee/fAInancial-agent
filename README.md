@@ -1,7 +1,7 @@
 # fAInancial-agent
 
 > 자연어로 한국 금융 데이터를 조회·분석하는 AI Agent
-> MCP Tool + Gemini API — 프레임워크 없이 직접 구현
+> MCP Tool + Gemini API + LangGraph
 
 ---
 
@@ -10,14 +10,17 @@
 ```mermaid
 graph TD
     A[사용자: 자연어 질문] --> B[FastAPI POST /chat]
-    B --> C[Agent Loop<br/>while function_calls]
-    C -->|function_call| D[MCP Client<br/>Streamable HTTP]
+    B --> C[LangGraph StateGraph]
+    C -->|agent_node| H[Gemini LLM]
+    H -->|tool_calls| T[tool_node]
+    T --> D[MCP Client<br/>Streamable HTTP]
     D --> E[MCP Server :8001]
     E --> F[DART OpenAPI<br/>재무제표 · 공시]
     E --> G[KRX FinanceDataReader<br/>주가 · 시세]
-    F -->|tool_result| C
-    G -->|tool_result| C
-    C -->|텍스트 응답| H[Gemini 최종 요약]
+    F -->|ToolMessage| C
+    G -->|ToolMessage| C
+    H -->|최종 응답| B
+    C -.->|InMemorySaver| S[(세션 상태)]
 ```
 
 ---
@@ -51,7 +54,9 @@ fAInancial-agent/
 │   └── Dockerfile
 ├── agent/               # AI Agent
 │   ├── main.py          # FastAPI POST /chat + GET /health
-│   ├── loop.py          # Agent Loop (while + function_call 직접 구현)
+│   ├── graph.py         # LangGraph StateGraph Agent (Phase 2-B)
+│   ├── loop.py          # Agent Loop 원본 (Phase 0 — 보존)
+│   ├── session.py       # SessionStore 원본 (Phase 2-A — 보존)
 │   ├── mcp_client.py    # MCP Streamable HTTP 클라이언트
 │   └── Dockerfile
 ├── tests/               # 단위 테스트 (pytest)
@@ -65,12 +70,30 @@ fAInancial-agent/
 
 | 역할 | 라이브러리 |
 |------|-----------|
-| LLM | Gemini API (`google-genai`) |
+| LLM | Gemini API (`langchain-google-genai`) |
+| Agent 오케스트레이션 | LangGraph `StateGraph` + `InMemorySaver` |
 | MCP 서버·클라이언트 | `mcp` 공식 SDK (Streamable HTTP) |
+| RAG 임베딩 | Voyage AI `voyage-finance-2` |
 | DART 공시 데이터 | `requests` (OpenDART API 직접 호출) |
 | 주가 데이터 | `FinanceDataReader` |
 | API 서버 | `FastAPI` + `uvicorn` |
 | 배포 | Docker Compose |
+
+---
+
+## Agent 구현 비교: loop.py vs graph.py
+
+| 항목 | Phase 0 (`loop.py`) | Phase 2-B (`graph.py`) |
+|------|---------------------|------------------------|
+| 오케스트레이션 | `while` 루프 + `function_calls` 파싱 | LangGraph `StateGraph` + 조건부 엣지 |
+| 상태 관리 | `SessionStore` (dict + TTL) | `InMemorySaver` (checkpoint 자동) |
+| LLM 연결 | `google-genai` 직접 호출 | `langchain-google-genai` 어댑터 |
+| Tool 바인딩 | `FunctionDeclaration` 수동 변환 | `bind_tools()` |
+| 메시지 프로토콜 | `types.Content` / `types.Part` | `HumanMessage` / `AIMessage` / `ToolMessage` |
+| 세션 지속 | `session_id` → dict 수동 저장 | `thread_id` → checkpoint 자동 |
+| 확장성 | 노드 추가 시 `if/elif` 분기 | 노드/엣지 선언적 추가 |
+
+> `loop.py`와 `session.py`는 Phase 0 구현 참조용으로 보존됩니다.
 
 ---
 
@@ -79,6 +102,7 @@ fAInancial-agent/
 | Phase | 목표 | 상태 |
 |-------|------|------|
 | **Phase 0** | MCP Agent 즉시 동작 | 완료 |
-| Phase 1 | RAG Tool 연동 (공시 문서 검색) | 대기 |
-| Phase 2 | LangGraph vs CrewAI 비교 구현 | 대기 |
+| **Phase 1** | RAG Tool 연동 (공시 문서 검색) | 완료 |
+| **Phase 2-A** | Agent 고도화 (세션, 멀티 기업) | 완료 |
+| **Phase 2-B** | LangGraph 마이그레이션 | 진행 중 |
 | Phase 3 | vLLM + LLMOps 프로덕션화 | 대기 |
