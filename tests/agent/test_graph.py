@@ -99,7 +99,7 @@ class TestToolNode:
 
         result = await tool_node(state)
 
-        assert "호출 실패" in result["messages"][0].content
+        assert "오류가 발생했습니다" in result["messages"][0].content
 
     @pytest.mark.asyncio
     @patch("graph.call_mcp_tool", new_callable=AsyncMock)
@@ -158,6 +158,38 @@ class TestAgentNode:
 
         call_args = mock_model.ainvoke.call_args[0][0]
         assert call_args[0].content == SYSTEM_PROMPT
+
+    @pytest.mark.asyncio
+    @patch("graph.list_mcp_tools", new_callable=AsyncMock)
+    @patch("graph._get_model")
+    async def test_agent_node_binds_tools_when_available(self, mock_get_model, mock_list_tools):
+        """MCP tool이 있으면 bind_tools가 호출된다."""
+        mock_list_tools.return_value = [
+            {
+                "name": "get_financials",
+                "description": "재무제표 조회",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"corp_name": {"type": "string"}},
+                },
+            }
+        ]
+
+        mock_bound = AsyncMock()
+        mock_bound.ainvoke.return_value = AIMessage(content="응답")
+
+        mock_model = MagicMock()
+        mock_model.bind_tools.return_value = mock_bound
+        mock_get_model.return_value = mock_model
+
+        state: AgentState = {"messages": [HumanMessage(content="삼성전자 매출")]}
+        result = await agent_node(state)
+
+        mock_model.bind_tools.assert_called_once()
+        tool_defs = mock_model.bind_tools.call_args[0][0]
+        assert len(tool_defs) == 1
+        assert tool_defs[0]["function"]["name"] == "get_financials"
+        assert result["messages"][0].content == "응답"
 
 
 # --- run_graph 테스트 ---
@@ -218,3 +250,17 @@ class TestRunGraph:
         result = await run_graph("테스트", session_id="test-empty")
 
         assert result == ""
+
+    @pytest.mark.asyncio
+    @patch("graph.graph")
+    async def test_run_graph_recursion_error(self, mock_graph):
+        """GraphRecursionError 발생 시 사용자 친화적 메시지를 반환한다."""
+        from langgraph.errors import GraphRecursionError
+
+        mock_graph.ainvoke = AsyncMock(
+            side_effect=GraphRecursionError("Recursion limit reached")
+        )
+
+        result = await run_graph("테스트", session_id="test-recursion")
+
+        assert "최대 반복" in result

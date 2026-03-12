@@ -4,17 +4,21 @@ Phase 2-B: loop.py의 while 루프를 StateGraph + nodes + edges로 교체.
 MemorySaver가 SessionStore를 대체하여 대화 상태를 자동 관리.
 """
 
+import logging
 import os
 from typing import Annotated
 
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from mcp_client import call_mcp_tool, list_mcp_tools
+
+logger = logging.getLogger(__name__)
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -43,9 +47,12 @@ def _get_model():
     """ChatGoogleGenerativeAI를 지연 초기화한다."""
     global _model_instance
     if _model_instance is None:
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
         _model_instance = ChatGoogleGenerativeAI(
             model=MODEL,
-            google_api_key=os.getenv("GEMINI_API_KEY", ""),
+            google_api_key=api_key,
         )
     return _model_instance
 
@@ -88,7 +95,8 @@ async def tool_node(state: AgentState) -> dict:
         try:
             result = await call_mcp_tool(tc["name"], tc["args"])
         except Exception as exc:
-            result = f"Tool '{tc['name']}' 호출 실패: {exc}"
+            logger.exception("MCP tool '%s' 호출 실패", tc["name"])
+            result = f"Tool '{tc['name']}' 호출 중 오류가 발생했습니다."
 
         tool_messages.append(
             ToolMessage(content=result, tool_call_id=tc["id"])
@@ -128,10 +136,14 @@ async def run_graph(message: str, session_id: str) -> str:
         "recursion_limit": MAX_ITERATIONS * 2 + 5,
     }
 
-    result = await graph.ainvoke(
-        {"messages": [("human", message)]},
-        config=config,
-    )
+    try:
+        result = await graph.ainvoke(
+            {"messages": [("human", message)]},
+            config=config,
+        )
+    except GraphRecursionError:
+        logger.warning("GraphRecursionError: session_id=%s", session_id)
+        return "최대 반복 횟수에 도달했습니다. 다시 시도해주세요."
 
     last = result["messages"][-1]
     if isinstance(last, AIMessage):

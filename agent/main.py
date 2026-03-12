@@ -34,7 +34,10 @@ async def chat(req: ChatRequest):
         return ChatResponse(response=text, session_id=session_id)
     except Exception as e:
         logger.exception("Agent loop failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="요청 처리 중 오류가 발생했습니다.",
+        )
 
 
 @app.get("/health")

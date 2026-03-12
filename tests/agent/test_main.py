@@ -29,7 +29,7 @@ async def test_chat_endpoint_error(mock_run_graph):
         resp = await client.post("/chat", json={"message": "테스트"})
 
     assert resp.status_code == 500
-    assert "MCP 서버 연결 실패" in resp.json()["detail"]
+    assert "오류가 발생했습니다" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
