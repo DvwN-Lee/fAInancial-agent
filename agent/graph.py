@@ -8,6 +8,12 @@ import logging
 import os
 from typing import Annotated
 
+try:
+    from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+    _LANGFUSE_AVAILABLE = True
+except ImportError:
+    _LANGFUSE_AVAILABLE = False
+
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import InMemorySaver
@@ -129,12 +135,32 @@ checkpointer = InMemorySaver()
 graph = _builder.compile(checkpointer=checkpointer)
 
 
+def _get_langfuse_handler(session_id: str):
+    """LANGFUSE_* 환경변수 미설정 또는 langfuse 미설치 시 None 반환."""
+    if not _LANGFUSE_AVAILABLE:
+        return None
+    public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+    if not public_key or not secret_key:
+        return None
+    host = os.getenv("LANGFUSE_HOST", "http://langfuse:3000")
+    return LangfuseCallbackHandler(
+        public_key=public_key,
+        secret_key=secret_key,
+        host=host,
+        session_id=session_id,
+    )
+
+
 async def run_graph(message: str, session_id: str) -> str:
     """StateGraph를 실행하고 최종 응답 텍스트를 반환한다."""
+    langfuse_handler = _get_langfuse_handler(session_id)
     config = {
         "configurable": {"thread_id": session_id},
         "recursion_limit": MAX_ITERATIONS * 2 + 5,
     }
+    if langfuse_handler:
+        config["callbacks"] = [langfuse_handler]
 
     try:
         result = await graph.ainvoke(

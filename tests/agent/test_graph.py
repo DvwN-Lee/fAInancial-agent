@@ -264,3 +264,36 @@ class TestRunGraph:
         result = await run_graph("테스트", session_id="test-recursion")
 
         assert "최대 반복" in result
+
+    @pytest.mark.asyncio
+    @patch("graph._get_langfuse_handler")
+    @patch("graph.list_mcp_tools", new_callable=AsyncMock)
+    @patch("graph._get_model")
+    async def test_run_graph_without_langfuse(self, mock_get_model, mock_list_tools, mock_langfuse):
+        """LANGFUSE 미설정 시 callbacks 없이 정상 실행."""
+        mock_langfuse.return_value = None
+        mock_list_tools.return_value = []
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = AIMessage(content="응답")
+        mock_get_model.return_value = mock_model
+
+        result = await run_graph("테스트", session_id="no-langfuse")
+        assert result == "응답"
+
+    @pytest.mark.asyncio
+    @patch("graph._get_langfuse_handler")
+    @patch("graph.list_mcp_tools", new_callable=AsyncMock)
+    @patch("graph._get_model")
+    async def test_run_graph_with_langfuse(self, mock_get_model, mock_list_tools, mock_langfuse):
+        """LANGFUSE 설정 시 callbacks에 handler가 포함된다."""
+        mock_handler = MagicMock()
+        mock_langfuse.return_value = mock_handler
+        mock_list_tools.return_value = []
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = AIMessage(content="응답")
+        mock_get_model.return_value = mock_model
+
+        result = await run_graph("테스트", session_id="with-langfuse")
+        assert result == "응답"
+        # handler가 _get_langfuse_handler로 반환되었는지 확인
+        mock_langfuse.assert_called_once_with("with-langfuse")
