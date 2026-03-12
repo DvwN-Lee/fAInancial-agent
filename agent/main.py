@@ -1,14 +1,15 @@
 """
 fAInancial-agent FastAPI 진입점
-POST /chat → Agent Loop 실행
+POST /chat → LangGraph Agent 실행 (session_id로 대화 지속)
 """
 
 import logging
+import uuid
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from loop import run_agent
+from graph import run_graph
 
 logger = logging.getLogger(__name__)
 
@@ -17,20 +18,26 @@ app = FastAPI(title="fAInancial-agent")
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str | None = None
 
 
 class ChatResponse(BaseModel):
     response: str
+    session_id: str
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     try:
-        result = await run_agent(req.message)
-        return ChatResponse(response=result)
+        session_id = req.session_id or str(uuid.uuid4())
+        text = await run_graph(req.message, session_id=session_id)
+        return ChatResponse(response=text, session_id=session_id)
     except Exception as e:
         logger.exception("Agent loop failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="요청 처리 중 오류가 발생했습니다.",
+        )
 
 
 @app.get("/health")
