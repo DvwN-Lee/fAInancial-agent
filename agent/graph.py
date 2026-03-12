@@ -94,7 +94,7 @@ async def tool_node(state: AgentState) -> dict:
     for tc in last_message.tool_calls:
         try:
             result = await call_mcp_tool(tc["name"], tc["args"])
-        except Exception as exc:
+        except Exception:
             logger.exception("MCP tool '%s' 호출 실패", tc["name"])
             result = f"Tool '{tc['name']}' 호출 중 오류가 발생했습니다."
 

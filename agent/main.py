@@ -32,7 +32,7 @@ async def chat(req: ChatRequest):
         session_id = req.session_id or str(uuid.uuid4())
         text = await run_graph(req.message, session_id=session_id)
         return ChatResponse(response=text, session_id=session_id)
-    except Exception as e:
+    except Exception:
         logger.exception("Agent loop failed")
         raise HTTPException(
             status_code=500,

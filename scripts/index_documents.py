@@ -78,7 +78,7 @@ def _is_boilerplate(text: str) -> bool:
     # 테이블형 데이터 필터: 줄이 많고 평균 줄 길이가 짧으면 테이블/목록
     lines = stripped.split("\n")
     if len(lines) >= 10:
-        avg_line_len = sum(len(l) for l in lines) / len(lines)
+        avg_line_len = sum(len(line) for line in lines) / len(lines)
         if avg_line_len < 20:
             return True
     # 법인명 목록 필터: 자회사/종속기업 나열 청크
