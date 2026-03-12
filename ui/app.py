@@ -1,7 +1,10 @@
+import logging
 import os
 
 import requests
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 AGENT_API_URL = os.getenv("AGENT_API_URL", "http://localhost:8000")
 
@@ -42,7 +45,11 @@ if prompt := st.chat_input("질문을 입력하세요 (예: 삼성전자 2024년
                     timeout=120,
                 )
                 resp.raise_for_status()
-                data = resp.json()
+                try:
+                    data = resp.json()
+                except requests.exceptions.JSONDecodeError:
+                    logger.exception("응답 JSON 파싱 실패: %s", resp.text[:200])
+                    data = {}
                 answer = data.get("response", "(응답 없음)")
                 st.session_state.session_id = data.get("session_id")
             except requests.exceptions.ConnectionError:
@@ -52,6 +59,7 @@ if prompt := st.chat_input("질문을 입력하세요 (예: 삼성전자 2024년
             except requests.exceptions.HTTPError as e:
                 answer = f"API 오류: {e.response.status_code} - {e.response.text}"
             except Exception as e:
+                logger.exception("예상치 못한 오류 발생")
                 answer = f"오류가 발생했습니다: {e}"
 
         st.markdown(answer)

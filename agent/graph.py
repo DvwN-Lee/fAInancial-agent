@@ -144,12 +144,16 @@ def _get_langfuse_handler(session_id: str):
     if not public_key or not secret_key:
         return None
     host = os.getenv("LANGFUSE_HOST", "http://langfuse:3000")
-    return LangfuseCallbackHandler(
-        public_key=public_key,
-        secret_key=secret_key,
-        host=host,
-        session_id=session_id,
-    )
+    try:
+        return LangfuseCallbackHandler(
+            public_key=public_key,
+            secret_key=secret_key,
+            host=host,
+            session_id=session_id,
+        )
+    except Exception:
+        logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.")
+        return None
 
 
 async def run_graph(message: str, session_id: str) -> str:
