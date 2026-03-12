@@ -47,7 +47,7 @@ def test_resolve_corp_code_not_found():
             resolve_corp_code("없는회사")
 
 
-from dart_tools import dart_financials
+from dart_tools import dart_financials  # noqa: E402
 
 SAMPLE_FINANCIAL_RESPONSE = {
     "status": "000",
@@ -95,7 +95,7 @@ def test_dart_financials_api_error(mock_get, mock_resolve):
     assert "조회된 데이터가 없습니다" in result
 
 
-from dart_tools import dart_search
+from dart_tools import dart_search  # noqa: E402
 
 SAMPLE_SEARCH_RESPONSE = {
     "status": "000",

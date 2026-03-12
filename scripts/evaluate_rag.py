@@ -107,8 +107,6 @@ def main():
         print(f"  처리: {question[:30]}...")
         time.sleep(RATE_LIMIT_DELAY)  # RPM 제한 대응
 
-    dataset = EvaluationDataset(samples=samples)
-
     evaluator_llm = llm_factory(GEMINI_MODEL, provider="google", client=client)
     run_config = RunConfig(max_workers=1, max_retries=5, max_wait=120)
 
@@ -132,7 +130,7 @@ def main():
         sample_scores = []
         for si, sample in enumerate(samples):
             if si > 0:
-                print(f"  RPM 리셋 대기 (60초)...")
+                print("  RPM 리셋 대기 (60초)...")
                 time.sleep(60)
             print(f"    [{si+1}/{len(samples)}] 평가 중...")
             single_dataset = EvaluationDataset(samples=[sample])
@@ -162,7 +160,7 @@ def main():
     }
     result_path.write_text(json.dumps(result_dict, ensure_ascii=False, indent=2))
 
-    print(f"\n=== RAGAS 평가 결과 ===")
+    print("\n=== RAGAS 평가 결과 ===")
     for metric, value in metrics_dict.items():
         print(f"  {metric}: {value:.3f}")
     print(f"\n결과 저장: {result_path}")

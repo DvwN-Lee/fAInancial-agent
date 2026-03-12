@@ -96,3 +96,51 @@
 
 - [ ] README에 loop.py vs graph.py 비교 표 포함 (코드량, 상태관리, 확장성, 의존성)
 - [ ] CLAUDE.md Constitution 수정: Phase 2-B부터 `langgraph` import 허용
+
+---
+
+## Phase 3-A — 프로덕션화 (CI + UI + Observability)
+
+> 설계 문서: [phase3a-productionization.md](./plans/2026-03-12-phase3a-productionization.md)
+> 태스크: [phase3a-tasks.md](./plans/2026-03-12-phase3a-tasks.md) T1~T4
+
+### T1 — GitHub Actions CI
+
+- [ ] push/PR 시 CI 자동 트리거 (main, feat/**)
+- [ ] `uv run pytest tests/ -v` 91개 전체 통과
+- [ ] `uv run ruff check .` lint 통과
+- [ ] GitHub Actions 탭 초록 체크 확인
+
+### T2 — Streamlit UI
+
+- [ ] `docker compose up` 후 `http://localhost:8501` 접속 가능
+- [ ] 메시지 입력 → `/chat` API 호출 → 응답 표시
+- [ ] 동일 세션 대화 지속 (session_id 유지)
+- [ ] 페이지 새로고침 시 새 세션 시작
+
+### T3 — LangFuse Observability
+
+- [ ] `docker compose -f docker-compose.yml -f docker-compose.langfuse.yml up` 기동
+- [ ] `http://localhost:3000` LangFuse 대시보드 접속
+- [ ] 채팅 1회 후 LangFuse에 trace 1건 생성 확인
+- [ ] `LANGFUSE_*` 미설정 시 기존 동작 유지 (graceful degradation)
+- [ ] 기존 테스트 91개 이상 전체 통과
+
+### T4 — Demo 산출물
+
+- [ ] README에 GitHub Actions CI 뱃지 포함
+- [ ] README에 Streamlit UI 스크린샷 1장 이상 포함
+- [ ] Quick Start에 `:8501` UI URL 안내 추가
+
+### 코드 품질
+
+- [ ] `uv run pytest tests/ -v` 전체 통과
+- [ ] `uv run ruff check .` lint 통과
+- [ ] API 키 하드코딩 없음 (LangFuse 키 포함)
+
+### 아키텍처
+
+- [ ] Docker Compose: agent + mcp + ui 3서비스 `docker compose up` 한 줄 기동
+- [ ] LangFuse: 별도 `docker-compose.langfuse.yml`로 선택적 활성화
+- [ ] Streamlit: FastAPI `/chat` 엔드포인트만 호출 (MCP/LLM 직접 호출 없음)
+- [ ] graph.py: LANGFUSE_* 없으면 CallbackHandler 미주입 (기존 동작 동일)

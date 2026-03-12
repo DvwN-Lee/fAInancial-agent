@@ -12,6 +12,7 @@ from graph import (
     should_continue,
     run_graph,
     _mcp_to_tool_defs,
+    _get_langfuse_handler,
     SYSTEM_PROMPT,
 )
 
@@ -264,3 +265,111 @@ class TestRunGraph:
         result = await run_graph("테스트", session_id="test-recursion")
 
         assert "최대 반복" in result
+
+    @pytest.mark.asyncio
+    @patch("graph._get_langfuse_handler")
+    @patch("graph.list_mcp_tools", new_callable=AsyncMock)
+    @patch("graph._get_model")
+    async def test_run_graph_without_langfuse(self, mock_get_model, mock_list_tools, mock_langfuse):
+        """LANGFUSE 미설정 시 callbacks 없이 정상 실행."""
+        mock_langfuse.return_value = None
+        mock_list_tools.return_value = []
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = AIMessage(content="응답")
+        mock_get_model.return_value = mock_model
+
+        result = await run_graph("테스트", session_id="no-langfuse")
+        assert result == "응답"
+
+    @pytest.mark.asyncio
+    @patch("graph._get_langfuse_handler")
+    @patch("graph.list_mcp_tools", new_callable=AsyncMock)
+    @patch("graph._get_model")
+    async def test_run_graph_with_langfuse(self, mock_get_model, mock_list_tools, mock_langfuse):
+        """LANGFUSE 설정 시 callbacks에 handler가 포함된다."""
+        mock_handler = MagicMock()
+        mock_langfuse.return_value = mock_handler
+        mock_list_tools.return_value = []
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = AIMessage(content="응답")
+        mock_get_model.return_value = mock_model
+
+        result = await run_graph("테스트", session_id="with-langfuse")
+        assert result == "응답"
+        # handler가 _get_langfuse_handler로 반환되었는지 확인
+        mock_langfuse.assert_called_once_with("with-langfuse")
+
+
+# --- _get_langfuse_handler 단위 테스트 ---
+
+
+class TestGetLangfuseHandler:
+    def test_returns_none_when_langfuse_not_available(self):
+        """langfuse 미설치 시 None 반환."""
+        import graph
+        original = graph._LANGFUSE_AVAILABLE
+        try:
+            graph._LANGFUSE_AVAILABLE = False
+            result = _get_langfuse_handler("session-1")
+            assert result is None
+        finally:
+            graph._LANGFUSE_AVAILABLE = original
+
+    def test_returns_none_when_keys_missing(self):
+        """LANGFUSE_PUBLIC_KEY/SECRET_KEY 미설정 시 None 반환."""
+        with patch.dict("os.environ", {}, clear=False):
+            # 환경변수에서 키 제거
+            import os
+            env_backup = {k: os.environ.pop(k) for k in ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"] if k in os.environ}
+            try:
+                result = _get_langfuse_handler("session-2")
+                assert result is None
+            finally:
+                os.environ.update(env_backup)
+
+    def test_returns_none_when_constructor_raises(self):
+        """LangfuseCallbackHandler 생성자 예외 시 None 반환 (graceful degradation)."""
+        import graph
+        original_available = graph._LANGFUSE_AVAILABLE
+        mock_handler_cls = MagicMock(side_effect=Exception("connection error"))
+        original_cls = getattr(graph, "LangfuseCallbackHandler", None)
+        try:
+            graph._LANGFUSE_AVAILABLE = True
+            graph.LangfuseCallbackHandler = mock_handler_cls
+            with patch.dict("os.environ", {"LANGFUSE_PUBLIC_KEY": "pk", "LANGFUSE_SECRET_KEY": "sk"}):
+                result = _get_langfuse_handler("session-3")
+                assert result is None
+        finally:
+            graph._LANGFUSE_AVAILABLE = original_available
+            if original_cls is None:
+                delattr(graph, "LangfuseCallbackHandler")
+            else:
+                graph.LangfuseCallbackHandler = original_cls
+
+    def test_injects_callbacks_into_config(self):
+        """LangFuse handler 반환 시 run_graph config에 callbacks가 주입된다."""
+        import asyncio
+
+        async def _run():
+            mock_handler = MagicMock()
+            captured_config = {}
+
+            async def fake_ainvoke(inputs, config=None):
+                captured_config.update(config or {})
+                return {"messages": [AIMessage(content="응답")]}
+
+            with patch("graph._get_langfuse_handler", return_value=mock_handler), \
+                 patch("graph.graph") as mock_graph, \
+                 patch("graph.list_mcp_tools", new_callable=AsyncMock, return_value=[]), \
+                 patch("graph._get_model") as mock_get_model:
+                mock_graph.ainvoke = fake_ainvoke
+                mock_model = AsyncMock()
+                mock_model.ainvoke.return_value = AIMessage(content="응답")
+                mock_get_model.return_value = mock_model
+
+                await run_graph("테스트", session_id="cb-test")
+
+            assert "callbacks" in captured_config
+            assert captured_config["callbacks"] == [mock_handler]
+
+        asyncio.get_event_loop().run_until_complete(_run())

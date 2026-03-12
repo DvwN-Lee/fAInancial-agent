@@ -1,5 +1,7 @@
 # fAInancial-agent
 
+[![CI](https://github.com/DvwN-Lee/fAInancial-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/DvwN-Lee/fAInancial-agent/actions/workflows/ci.yml)
+
 > 자연어로 한국 금융 데이터를 조회·분석하는 AI Agent
 > MCP Tool + Gemini API + LangGraph
 
@@ -21,6 +23,8 @@ graph TD
     G -->|ToolMessage| C
     H -->|최종 응답| B
     C -.->|InMemorySaver| S[(세션 상태)]
+    B -->|웹 UI| UI[Streamlit :8501]
+    C -.->|LangFuse trace| LF[LangFuse :3000]
 ```
 
 ---
@@ -32,13 +36,23 @@ graph TD
 cp .env.example .env
 # .env에 GEMINI_API_KEY, DART_API_KEY 입력
 
-# 2. 실행
+# 2. 전체 스택 실행
 docker compose up
 
-# 3. 질문
+# 3. 웹 UI 접속
+open http://localhost:8501
+
+# 또는 API 직접 호출
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "삼성전자 2024년 매출 알려줘"}'
+```
+
+### LangFuse Observability (선택)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.langfuse.yml up
+# LangFuse 대시보드: http://localhost:3000
 ```
 
 ---
@@ -58,6 +72,9 @@ fAInancial-agent/
 │   ├── loop.py          # Agent Loop 원본 (Phase 0 — 보존)
 │   ├── session.py       # SessionStore 원본 (Phase 2-A — 보존)
 │   ├── mcp_client.py    # MCP Streamable HTTP 클라이언트
+│   └── Dockerfile
+├── ui/                  # Streamlit 웹 UI (:8501)
+│   ├── app.py           # 채팅 인터페이스
 │   └── Dockerfile
 ├── tests/               # 단위 테스트 (pytest)
 ├── docker-compose.yml
@@ -97,6 +114,14 @@ fAInancial-agent/
 
 ---
 
+## 데모
+
+> 스크린샷: `docker compose up` 후 http://localhost:8501
+
+![UI Screenshot](docs/demo/screenshot.png)
+
+---
+
 ## Phase 로드맵
 
 | Phase | 목표 | 상태 |
@@ -104,5 +129,5 @@ fAInancial-agent/
 | **Phase 0** | MCP Agent 즉시 동작 | 완료 |
 | **Phase 1** | RAG Tool 연동 (공시 문서 검색) | 완료 |
 | **Phase 2-A** | Agent 고도화 (세션, 멀티 기업) | 완료 |
-| **Phase 2-B** | LangGraph 마이그레이션 | 진행 중 |
-| Phase 3 | vLLM + LLMOps 프로덕션화 | 대기 |
+| **Phase 2-B** | LangGraph 마이그레이션 | 완료 |
+| **Phase 3-A** | Streamlit UI + CI + LangFuse | 진행 중 |
