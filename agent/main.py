@@ -24,14 +24,15 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     session_id: str
+    tools_used: list[str] = []
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     try:
         session_id = req.session_id or str(uuid.uuid4())
-        text = await run_graph(req.message, session_id=session_id)
-        return ChatResponse(response=text, session_id=session_id)
+        text, tools_used = await run_graph(req.message, session_id=session_id)
+        return ChatResponse(response=text, session_id=session_id, tools_used=tools_used)
     except Exception:
         logger.exception("Agent loop failed")
         raise HTTPException(
