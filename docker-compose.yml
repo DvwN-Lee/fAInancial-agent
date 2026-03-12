@@ -27,3 +27,13 @@ services:
       mcp-server:
         condition: service_healthy
     restart: unless-stopped
+
+  ui:
+    build: ./ui
+    ports:
+      - "8501:8501"
+    environment:
+      - AGENT_API_URL=http://agent:8000
+    depends_on:
+      - agent
+    restart: unless-stopped
