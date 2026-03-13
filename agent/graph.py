@@ -9,10 +9,14 @@ import os
 from typing import Annotated
 
 try:
-    from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+    from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler  # v3+
     _LANGFUSE_AVAILABLE = True
 except ImportError:
-    _LANGFUSE_AVAILABLE = False
+    try:
+        from langfuse.callback import CallbackHandler as LangfuseCallbackHandler  # v2
+        _LANGFUSE_AVAILABLE = True
+    except ImportError:
+        _LANGFUSE_AVAILABLE = False
 
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
