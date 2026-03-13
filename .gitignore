@@ -56,3 +56,21 @@ data/documents/*
 data/faiss/*
 data/eval/results_*.json
 !data/**/.gitkeep
+
+# =============================================================================
+# SAGA / Process docs — 구현과 무관한 프로세스 문서
+# =============================================================================
+.claude/SAGA-OPERATIONS.md
+.claude/skills/SAGA/
+.claude/hooks/*.template
+docs/plans/
+docs/tasks.md
+docs/dod.md
+docs/handoffs/
+docs/improvements/
+docs/verify-report-*.md
+docs/adr/
+docs/claude/
+
+# --- Gemini MCP ---
+.gemini-mcp/
