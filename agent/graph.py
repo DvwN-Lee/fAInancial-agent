@@ -152,7 +152,7 @@ def _get_langfuse_handler(session_id: str):
             session_id=session_id,
         )
     except Exception:
-        logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.")
+        logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
         return None
 
 
@@ -181,6 +181,9 @@ async def run_graph(message: str, session_id: str) -> tuple[str, list[str]]:
             for tc in msg.tool_calls:
                 if tc["name"] not in tools_used:
                     tools_used.append(tc["name"])
+
+    if not result["messages"]:
+        return "응답을 생성하지 못했습니다.", tools_used
 
     last = result["messages"][-1]
     if isinstance(last, AIMessage):

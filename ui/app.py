@@ -420,8 +420,10 @@ def call_agent(prompt: str) -> tuple[str, list[str]]:
             data = resp.json()
         except requests.exceptions.JSONDecodeError:
             logger.exception("응답 JSON 파싱 실패: %s", resp.text[:200])
-            data = {}
-        st.session_state.session_id = data.get("session_id")
+            return "(응답 파싱 실패)", []
+        st.session_state.session_id = data.get(
+            "session_id", st.session_state.session_id
+        )
         return data.get("response", "(응답 없음)"), data.get("tools_used", [])
     except requests.exceptions.ConnectionError:
         return f"Agent API에 연결할 수 없습니다. ({AGENT_API_URL})", []
