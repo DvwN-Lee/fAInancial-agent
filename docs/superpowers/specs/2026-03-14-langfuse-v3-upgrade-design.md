@@ -43,23 +43,32 @@
 
 | 변수 | 용도 | 생성 방법 |
 |------|------|----------|
-| ENCRYPTION_KEY | 데이터 암호화 (64자 hex) | `openssl rand -hex 32` |
+| ENCRYPTION_KEY | 데이터 암호화 (64자 hex). langfuse + langfuse-worker 양쪽에 동일 값 주입 | `openssl rand -hex 32` |
 | CLICKHOUSE_URL | ClickHouse HTTP 연결 | compose 내부 |
 | CLICKHOUSE_PASSWORD | ClickHouse 인증 | compose 기본값 |
 | REDIS_CONNECTION_STRING | Redis 연결 | compose 내부 |
+| LANGFUSE_S3_EVENT_UPLOAD_BUCKET | MinIO 이벤트 버킷 | compose 기본값 |
+| LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT | MinIO 엔드포인트 | compose 내부 (http://minio:9000) |
+| MINIO_ROOT_USER / MINIO_ROOT_PASSWORD | MinIO 인증 | compose 기본값 |
 
 **healthcheck 체인:**
 - langfuse-db: `pg_isready -U langfuse -d langfuse`
 - clickhouse: HTTP health endpoint
 - redis: `redis-cli ping`
-- langfuse: `curl http://localhost:3000/api/public/health`
-- langfuse-worker: langfuse-db + clickhouse + redis healthy 대기
-- langfuse: langfuse-db + clickhouse + redis healthy 대기
+- minio: `curl -f http://localhost:9000/minio/health/live`
+- langfuse: `curl -f http://localhost:3000/api/public/health`
+- langfuse-worker: 인프라 4종 healthy 대기
 
 **depends_on 체인:**
-- langfuse-worker → langfuse-db, clickhouse, redis (service_healthy)
-- langfuse → langfuse-db, clickhouse, redis (service_healthy)
+- langfuse-worker → langfuse-db, clickhouse, redis, minio (service_healthy)
+- langfuse → langfuse-db, clickhouse, redis, minio (service_healthy)
 - agent → langfuse (service_healthy)
+
+**기존 환경변수 유지:**
+- NEXTAUTH_SECRET, SALT, DATABASE_URL — v3에서도 필수, 그대로 유지
+- LANGFUSE_INIT_* 9개 — v3 headless initialization으로 정상 동작
+
+**v2 데이터 참고:** 이 프로젝트는 포트폴리오 신규 배포이므로 v2→v3 데이터 마이그레이션은 해당 없음. v3는 트레이스를 ClickHouse에 저장하므로, 기존 PostgreSQL의 v2 트레이스는 v3 대시보드에 표시되지 않음.
 
 **볼륨:**
 - langfuse_db_data (기존 유지)
@@ -136,6 +145,6 @@ graceful degradation 패턴은 그대로 유지된다. `_get_langfuse_handler()`
 ## Verification Criteria
 
 1. `uv lock` 후 `uv run pytest tests/ -v` 전체 통과
-2. `docker compose -f docker-compose.yml -f docker-compose.langfuse.yml up` 시 6개 서비스 정상 기동
+2. `docker compose -f docker-compose.yml -f docker-compose.langfuse.yml up` 시 LangFuse 스택 6개 서비스 정상 기동 (langfuse-db, clickhouse, redis, minio, langfuse-worker, langfuse)
 3. LangFuse 대시보드 :3000 로그인 가능 (headless initialization)
 4. 실제 `/chat` 요청 1건 후 LangFuse Traces 탭에 트레이스 기록 확인
