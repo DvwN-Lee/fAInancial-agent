@@ -141,6 +141,9 @@ graceful degradation 패턴은 그대로 유지된다. `_get_langfuse_handler()`
 | R-1 | ENCRYPTION_KEY는 .env에 고정값으로 생성. README에 openssl rand -hex 32 절차 명시 |
 | R-2 | agent 서비스에 depends_on: langfuse: condition: service_healthy 추가 |
 | R-3 | langfuse 웹 서비스에 /api/public/health healthcheck 정의 |
+| R-4 | LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID, _SECRET_ACCESS_KEY, FORCE_PATH_STYLE=true를 langfuse + langfuse-worker에 추가 |
+| R-5 | volumes: 섹션에 clickhouse_data, redis_data, minio_data 명시적 선언 |
+| R-6 | MINIO_ROOT_PASSWORD를 .env 주입 값으로 처리 (8자 이상, changeme 기본값 사용 금지) |
 
 ## Verification Criteria
 
