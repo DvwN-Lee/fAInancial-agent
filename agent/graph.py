@@ -152,12 +152,12 @@ def _get_langfuse_handler(session_id: str):
             session_id=session_id,
         )
     except Exception:
-        logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.")
+        logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
         return None
 
 
-async def run_graph(message: str, session_id: str) -> str:
-    """StateGraph를 실행하고 최종 응답 텍스트를 반환한다."""
+async def run_graph(message: str, session_id: str) -> tuple[str, list[str]]:
+    """StateGraph를 실행하고 (응답 텍스트, 사용된 tool 목록)을 반환한다."""
     langfuse_handler = _get_langfuse_handler(session_id)
     config = {
         "configurable": {"thread_id": session_id},
@@ -173,9 +173,22 @@ async def run_graph(message: str, session_id: str) -> str:
         )
     except GraphRecursionError:
         logger.warning("GraphRecursionError: session_id=%s", session_id)
-        return "최대 반복 횟수에 도달했습니다. 다시 시도해주세요."
+        return "최대 반복 횟수에 도달했습니다. 다시 시도해주세요.", []
+
+    tools_used: list[str] = []
+    for msg in result["messages"]:
+        if isinstance(msg, AIMessage) and msg.tool_calls:
+            for tc in msg.tool_calls:
+                if tc["name"] not in tools_used:
+                    tools_used.append(tc["name"])
+
+    if not result["messages"]:
+        return "응답을 생성하지 못했습니다.", tools_used
 
     last = result["messages"][-1]
     if isinstance(last, AIMessage):
-        return last.content or ""
-    return str(last.content) if hasattr(last, "content") else ""
+        text = last.content or ""
+    else:
+        text = str(last.content) if hasattr(last, "content") else ""
+
+    return text, tools_used

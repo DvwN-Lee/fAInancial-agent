@@ -210,8 +210,10 @@ class TestRunGraph:
 
         result = await run_graph("삼성전자 매출", session_id="test-session-1")
 
-        assert isinstance(result, str)
-        assert "300조" in result
+        text, tools_used = result
+        assert isinstance(text, str)
+        assert "300조" in text
+        assert isinstance(tools_used, list)
 
     @pytest.mark.asyncio
     @patch("graph.list_mcp_tools", new_callable=AsyncMock)
@@ -231,7 +233,8 @@ class TestRunGraph:
         await run_graph("삼성전자 매출", session_id=sid)
         result = await run_graph("작년 대비?", session_id=sid)
 
-        assert "10%" in result
+        text, tools_used = result
+        assert "10%" in text
         # 두 번째 호출 시 이전 메시지가 포함되어 전달
         second_call_messages = mock_model.ainvoke.call_args_list[1][0][0]
         # system + human1 + ai1 + human2 = 4개 이상
@@ -250,7 +253,9 @@ class TestRunGraph:
 
         result = await run_graph("테스트", session_id="test-empty")
 
-        assert result == ""
+        text, tools_used = result
+        assert text == ""
+        assert tools_used == []
 
     @pytest.mark.asyncio
     @patch("graph.graph")
@@ -264,7 +269,9 @@ class TestRunGraph:
 
         result = await run_graph("테스트", session_id="test-recursion")
 
-        assert "최대 반복" in result
+        text, tools_used = result
+        assert "최대 반복" in text
+        assert tools_used == []
 
     @pytest.mark.asyncio
     @patch("graph._get_langfuse_handler")
@@ -278,8 +285,8 @@ class TestRunGraph:
         mock_model.ainvoke.return_value = AIMessage(content="응답")
         mock_get_model.return_value = mock_model
 
-        result = await run_graph("테스트", session_id="no-langfuse")
-        assert result == "응답"
+        text, tools_used = await run_graph("테스트", session_id="no-langfuse")
+        assert text == "응답"
 
     @pytest.mark.asyncio
     @patch("graph._get_langfuse_handler")
@@ -294,8 +301,8 @@ class TestRunGraph:
         mock_model.ainvoke.return_value = AIMessage(content="응답")
         mock_get_model.return_value = mock_model
 
-        result = await run_graph("테스트", session_id="with-langfuse")
-        assert result == "응답"
+        text, tools_used = await run_graph("테스트", session_id="with-langfuse")
+        assert text == "응답"
         # handler가 _get_langfuse_handler로 반환되었는지 확인
         mock_langfuse.assert_called_once_with("with-langfuse")
 
