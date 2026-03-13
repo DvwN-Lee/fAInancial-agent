@@ -1,6 +1,6 @@
 # fAInancial-agent
 
-[![CI](https://github.com/DvwN-Lee/fAInancial-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/DvwN-Lee/fAInancial-agent/actions/workflows/ci.yml)
+[![CI](https://github.com/DvwN-Lee/FAInancial-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/DvwN-Lee/FAInancial-agent/actions/workflows/ci.yml)
 
 > 자연어로 한국 금융 데이터를 조회·분석하는 AI Agent
 > MCP Tool + Gemini API + LangGraph
