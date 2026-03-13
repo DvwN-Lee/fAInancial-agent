@@ -165,7 +165,7 @@ h1 {
     font-size: 2.2rem !important;
     letter-spacing: -0.01em !important;
     color: var(--text-bright) !important;
-    line-height: 1.15 !important;
+    line-height: 1.35 !important;
 }
 
 /* ── Section headers ───────────────────────────────────────────────────────── */
@@ -466,7 +466,7 @@ if not st.session_state.messages:
     KOREAN FINANCIAL DATA TERMINAL
   </div>
   <h1 style="font-family:'Syne',sans-serif; font-weight:800; font-size:2.6rem;
-             letter-spacing:-0.02em; color:#EEF2F8; margin:0 0 0.4rem 0; line-height:1.1;">
+             letter-spacing:-0.02em; color:#EEF2F8; margin:0 0 0.4rem 0;">
     fAInancial Agent
   </h1>
   <p style="font-family:'IBM Plex Sans',sans-serif; font-size:0.9rem; font-weight:300;
