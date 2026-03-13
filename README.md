@@ -118,14 +118,11 @@ fAInancial-agent/
 
 > `docker compose up` 후 http://localhost:8501
 
-**환영 화면 — 예시 질문 버튼**
-![Welcome Screen](docs/demo/bloomberg-welcome-2026-03-12T16-11-27-403Z.png)
-
-**질문 입력**
-![Input](docs/demo/screenshot-input.png)
+**채팅 화면**
+![Chat](docs/demo/ui-chat.png)
 
 **응답 + Tool 뱃지**
-![Response](docs/demo/screenshot-response.png)
+![Tool Badge](docs/demo/ui-tool-badge.png)
 
 ---
 
