@@ -118,10 +118,10 @@ fAInancial-agent/
 
 > `docker compose up` 후 http://localhost:8501
 
-**채팅 화면**
+### **채팅 화면**
 ![Chat](docs/demo/ui-chat.png)
 
-**응답 + Tool 뱃지**
+### **응답 + Tool 뱃지**
 ![Tool Badge](docs/demo/ui-tool-badge.png)
 
 ---
