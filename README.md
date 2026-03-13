@@ -116,9 +116,16 @@ fAInancial-agent/
 
 ## 데모
 
-> 스크린샷: `docker compose up` 후 http://localhost:8501
+> `docker compose up` 후 http://localhost:8501
 
-![UI Screenshot](docs/demo/screenshot.png)
+**환영 화면 — 예시 질문 버튼**
+![Welcome Screen](docs/demo/bloomberg-welcome-2026-03-12T16-11-27-403Z.png)
+
+**질문 입력**
+![Input](docs/demo/screenshot-input.png)
+
+**응답 + Tool 뱃지**
+![Response](docs/demo/screenshot-response.png)
 
 ---
 
@@ -130,4 +137,5 @@ fAInancial-agent/
 | **Phase 1** | RAG Tool 연동 (공시 문서 검색) | 완료 |
 | **Phase 2-A** | Agent 고도화 (세션, 멀티 기업) | 완료 |
 | **Phase 2-B** | LangGraph 마이그레이션 | 완료 |
-| **Phase 3-A** | Streamlit UI + CI + LangFuse | 진행 중 |
+| **Phase 3-A** | Streamlit UI + CI + LangFuse | 완료 |
+| **Phase 3-B** | vLLM + K8s (별도 레포) | 대기 |
