@@ -9,6 +9,7 @@ import os
 from typing import Annotated
 
 try:
+    from langfuse import Langfuse
     from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler  # v3+
     _LANGFUSE_AVAILABLE = True
 except ImportError:
@@ -148,9 +149,8 @@ def _get_langfuse_handler(session_id: str):
     if not public_key or not secret_key:
         return None
     try:
-        return LangfuseCallbackHandler(
-            trace_context={"trace_id": session_id.replace("-", "")},
-        )
+        Langfuse()
+        return LangfuseCallbackHandler()
     except Exception:
         logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
         return None
@@ -162,6 +162,7 @@ async def run_graph(message: str, session_id: str) -> tuple[str, list[str]]:
     config = {
         "configurable": {"thread_id": session_id},
         "recursion_limit": MAX_ITERATIONS * 2 + 5,
+        "metadata": {"langfuse_session_id": session_id},
     }
     if langfuse_handler:
         config["callbacks"] = [langfuse_handler]

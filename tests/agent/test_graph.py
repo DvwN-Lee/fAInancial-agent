@@ -334,27 +334,49 @@ class TestGetLangfuseHandler:
             finally:
                 os.environ.update(env_backup)
 
-    def test_passes_hex_trace_id_without_hyphens(self):
-        """UUID session_id의 하이픈을 제거하여 hex trace_id로 전달한다."""
+    def test_initializes_langfuse_singleton_before_handler(self):
+        """v3: Langfuse() 싱글턴을 초기화한 후 CallbackHandler()를 생성한다."""
         import graph
         original_available = graph._LANGFUSE_AVAILABLE
+        mock_langfuse_cls = MagicMock()
         mock_handler_cls = MagicMock()
-        original_cls = getattr(graph, "LangfuseCallbackHandler", None)
+        original_handler = getattr(graph, "LangfuseCallbackHandler", None)
         try:
             graph._LANGFUSE_AVAILABLE = True
             graph.LangfuseCallbackHandler = mock_handler_cls
-            with patch.dict("os.environ", {"LANGFUSE_PUBLIC_KEY": "pk", "LANGFUSE_SECRET_KEY": "sk"}):
-                _get_langfuse_handler("9b7f643f-bc9c-4537-bea1-4084bbbc99f1")
-                call_kwargs = mock_handler_cls.call_args[1]
-                trace_id = call_kwargs["trace_context"]["trace_id"]
-                assert "-" not in trace_id, f"trace_id에 하이픈이 포함됨: {trace_id}"
-                assert trace_id == "9b7f643fbc9c4537bea14084bbbc99f1"
+            with patch.dict("os.environ", {"LANGFUSE_PUBLIC_KEY": "pk", "LANGFUSE_SECRET_KEY": "sk", "LANGFUSE_HOST": "http://langfuse:3000"}), \
+                 patch("graph.Langfuse", mock_langfuse_cls):
+                _get_langfuse_handler("session-init")
+                mock_langfuse_cls.assert_called_once()
+                mock_handler_cls.assert_called_once()
         finally:
             graph._LANGFUSE_AVAILABLE = original_available
-            if original_cls is None:
+            if original_handler is None:
                 delattr(graph, "LangfuseCallbackHandler")
             else:
-                graph.LangfuseCallbackHandler = original_cls
+                graph.LangfuseCallbackHandler = original_handler
+
+    def test_passes_session_id_via_metadata(self):
+        """v3: session_id가 config metadata의 langfuse_session_id로 전달된다."""
+        import asyncio
+
+        async def _run():
+            mock_handler = MagicMock()
+            captured_config = {}
+
+            async def fake_ainvoke(inputs, config=None):
+                captured_config.update(config or {})
+                return {"messages": [AIMessage(content="응답")]}
+
+            with patch("graph._get_langfuse_handler", return_value=mock_handler), \
+                 patch("graph.graph") as mock_graph:
+                mock_graph.ainvoke = fake_ainvoke
+                await run_graph("테스트", session_id="sess-abc-123")
+
+            metadata = captured_config.get("metadata", {})
+            assert metadata.get("langfuse_session_id") == "sess-abc-123"
+
+        asyncio.get_event_loop().run_until_complete(_run())
 
     def test_returns_none_when_constructor_raises(self):
         """LangfuseCallbackHandler 생성자 예외 시 None 반환 (graceful degradation)."""
