@@ -149,7 +149,7 @@ def _get_langfuse_handler(session_id: str):
         return None
     try:
         return LangfuseCallbackHandler(
-            trace_context={"trace_id": session_id},
+            trace_context={"trace_id": session_id.replace("-", "")},
         )
     except Exception:
         logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
