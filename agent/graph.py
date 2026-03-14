@@ -147,13 +147,9 @@ def _get_langfuse_handler(session_id: str):
     secret_key = os.getenv("LANGFUSE_SECRET_KEY")
     if not public_key or not secret_key:
         return None
-    host = os.getenv("LANGFUSE_HOST", "http://langfuse:3000")
     try:
         return LangfuseCallbackHandler(
-            public_key=public_key,
-            secret_key=secret_key,
-            host=host,
-            session_id=session_id,
+            trace_context={"trace_id": session_id},
         )
     except Exception:
         logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
