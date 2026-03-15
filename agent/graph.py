@@ -9,10 +9,17 @@ import os
 from typing import Annotated
 
 try:
-    from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+    from langfuse import Langfuse
+    from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler  # v3+
     _LANGFUSE_AVAILABLE = True
+    _LANGFUSE_V3 = True
 except ImportError:
-    _LANGFUSE_AVAILABLE = False
+    _LANGFUSE_V3 = False
+    try:
+        from langfuse.callback import CallbackHandler as LangfuseCallbackHandler  # v2
+        _LANGFUSE_AVAILABLE = True
+    except ImportError:
+        _LANGFUSE_AVAILABLE = False
 
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -143,14 +150,10 @@ def _get_langfuse_handler(session_id: str):
     secret_key = os.getenv("LANGFUSE_SECRET_KEY")
     if not public_key or not secret_key:
         return None
-    host = os.getenv("LANGFUSE_HOST", "http://langfuse:3000")
     try:
-        return LangfuseCallbackHandler(
-            public_key=public_key,
-            secret_key=secret_key,
-            host=host,
-            session_id=session_id,
-        )
+        if _LANGFUSE_V3:
+            Langfuse()
+        return LangfuseCallbackHandler()
     except Exception:
         logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
         return None
@@ -162,6 +165,7 @@ async def run_graph(message: str, session_id: str) -> tuple[str, list[str]]:
     config = {
         "configurable": {"thread_id": session_id},
         "recursion_limit": MAX_ITERATIONS * 2 + 5,
+        "metadata": {"langfuse_session_id": session_id},
     }
     if langfuse_handler:
         config["callbacks"] = [langfuse_handler]

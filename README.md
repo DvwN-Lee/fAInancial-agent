@@ -50,10 +50,22 @@ curl -X POST http://localhost:8000/chat \
 
 ### LangFuse Observability (선택)
 
+LLM 호출 추적, 비용 모니터링을 위한 self-hosted observability 스택입니다.
+
 ```bash
+# 1. ENCRYPTION_KEY 생성 (최초 1회)
+openssl rand -hex 32
+# 출력된 64자 hex 문자열을 .env에 추가:
+# ENCRYPTION_KEY=<생성된 값>
+
+# 2. LangFuse 포함 실행
 docker compose -f docker-compose.yml -f docker-compose.langfuse.yml up
-# LangFuse 대시보드: http://localhost:3000
 ```
+
+- 대시보드: http://localhost:3000 (기본 로그인: `admin@example.com` / `changeme` — `.env`에서 변경 가능)
+- v3 스택: PostgreSQL + ClickHouse + Redis + MinIO + Worker + Web (6개 서비스)
+- LangFuse 미설정 시 Agent는 observability 없이 정상 동작합니다 (graceful degradation)
+- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`는 대시보드 Settings → API Keys에서 발급
 
 ---
 
