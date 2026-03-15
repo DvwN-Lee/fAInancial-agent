@@ -190,9 +190,10 @@ async def run_graph(message: str, session_id: str) -> tuple[str, list[str]]:
         return "응답을 생성하지 못했습니다.", tools_used
 
     last = result["messages"][-1]
-    if isinstance(last, AIMessage):
-        text = last.content or ""
+    raw = last.content if hasattr(last, "content") else ""
+    if isinstance(raw, list):
+        text = "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in raw)
     else:
-        text = str(last.content) if hasattr(last, "content") else ""
+        text = raw or ""
 
     return text, tools_used
