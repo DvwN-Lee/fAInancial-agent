@@ -70,6 +70,7 @@ docs/handoffs/
 docs/improvements/
 docs/verify-report-*.md
 docs/claude/
+docs/superpowers/
 
 # --- Gemini MCP ---
 .gemini-mcp/
