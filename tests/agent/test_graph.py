@@ -356,27 +356,23 @@ class TestGetLangfuseHandler:
             else:
                 graph.LangfuseCallbackHandler = original_handler
 
-    def test_passes_session_id_via_metadata(self):
+    @pytest.mark.asyncio
+    async def test_passes_session_id_via_metadata(self):
         """v3: session_id가 config metadata의 langfuse_session_id로 전달된다."""
-        import asyncio
+        mock_handler = MagicMock()
+        captured_config = {}
 
-        async def _run():
-            mock_handler = MagicMock()
-            captured_config = {}
+        async def fake_ainvoke(inputs, config=None):
+            captured_config.update(config or {})
+            return {"messages": [AIMessage(content="응답")]}
 
-            async def fake_ainvoke(inputs, config=None):
-                captured_config.update(config or {})
-                return {"messages": [AIMessage(content="응답")]}
+        with patch("graph._get_langfuse_handler", return_value=mock_handler), \
+             patch("graph.graph") as mock_graph:
+            mock_graph.ainvoke = fake_ainvoke
+            await run_graph("테스트", session_id="sess-abc-123")
 
-            with patch("graph._get_langfuse_handler", return_value=mock_handler), \
-                 patch("graph.graph") as mock_graph:
-                mock_graph.ainvoke = fake_ainvoke
-                await run_graph("테스트", session_id="sess-abc-123")
-
-            metadata = captured_config.get("metadata", {})
-            assert metadata.get("langfuse_session_id") == "sess-abc-123"
-
-        asyncio.get_event_loop().run_until_complete(_run())
+        metadata = captured_config.get("metadata", {})
+        assert metadata.get("langfuse_session_id") == "sess-abc-123"
 
     def test_returns_none_when_constructor_raises(self):
         """LangfuseCallbackHandler 생성자 예외 시 None 반환 (graceful degradation)."""
@@ -387,7 +383,8 @@ class TestGetLangfuseHandler:
         try:
             graph._LANGFUSE_AVAILABLE = True
             graph.LangfuseCallbackHandler = mock_handler_cls
-            with patch.dict("os.environ", {"LANGFUSE_PUBLIC_KEY": "pk", "LANGFUSE_SECRET_KEY": "sk"}):
+            with patch.dict("os.environ", {"LANGFUSE_PUBLIC_KEY": "pk", "LANGFUSE_SECRET_KEY": "sk"}), \
+                 patch("graph.Langfuse", MagicMock()):
                 result = _get_langfuse_handler("session-3")
                 assert result is None
         finally:
@@ -397,30 +394,26 @@ class TestGetLangfuseHandler:
             else:
                 graph.LangfuseCallbackHandler = original_cls
 
-    def test_injects_callbacks_into_config(self):
+    @pytest.mark.asyncio
+    async def test_injects_callbacks_into_config(self):
         """LangFuse handler 반환 시 run_graph config에 callbacks가 주입된다."""
-        import asyncio
+        mock_handler = MagicMock()
+        captured_config = {}
 
-        async def _run():
-            mock_handler = MagicMock()
-            captured_config = {}
+        async def fake_ainvoke(inputs, config=None):
+            captured_config.update(config or {})
+            return {"messages": [AIMessage(content="응답")]}
 
-            async def fake_ainvoke(inputs, config=None):
-                captured_config.update(config or {})
-                return {"messages": [AIMessage(content="응답")]}
+        with patch("graph._get_langfuse_handler", return_value=mock_handler), \
+             patch("graph.graph") as mock_graph, \
+             patch("graph.list_mcp_tools", new_callable=AsyncMock, return_value=[]), \
+             patch("graph._get_model") as mock_get_model:
+            mock_graph.ainvoke = fake_ainvoke
+            mock_model = AsyncMock()
+            mock_model.ainvoke.return_value = AIMessage(content="응답")
+            mock_get_model.return_value = mock_model
 
-            with patch("graph._get_langfuse_handler", return_value=mock_handler), \
-                 patch("graph.graph") as mock_graph, \
-                 patch("graph.list_mcp_tools", new_callable=AsyncMock, return_value=[]), \
-                 patch("graph._get_model") as mock_get_model:
-                mock_graph.ainvoke = fake_ainvoke
-                mock_model = AsyncMock()
-                mock_model.ainvoke.return_value = AIMessage(content="응답")
-                mock_get_model.return_value = mock_model
+            await run_graph("테스트", session_id="cb-test")
 
-                await run_graph("테스트", session_id="cb-test")
-
-            assert "callbacks" in captured_config
-            assert captured_config["callbacks"] == [mock_handler]
-
-        asyncio.get_event_loop().run_until_complete(_run())
+        assert "callbacks" in captured_config
+        assert captured_config["callbacks"] == [mock_handler]

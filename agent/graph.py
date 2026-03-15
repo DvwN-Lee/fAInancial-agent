@@ -12,7 +12,9 @@ try:
     from langfuse import Langfuse
     from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler  # v3+
     _LANGFUSE_AVAILABLE = True
+    _LANGFUSE_V3 = True
 except ImportError:
+    _LANGFUSE_V3 = False
     try:
         from langfuse.callback import CallbackHandler as LangfuseCallbackHandler  # v2
         _LANGFUSE_AVAILABLE = True
@@ -149,7 +151,8 @@ def _get_langfuse_handler(session_id: str):
     if not public_key or not secret_key:
         return None
     try:
-        Langfuse()
+        if _LANGFUSE_V3:
+            Langfuse()
         return LangfuseCallbackHandler()
     except Exception:
         logger.warning("LangFuse 초기화 실패 — observability 비활성화로 계속 실행합니다.", exc_info=True)
