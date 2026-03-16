@@ -130,19 +130,34 @@ fAInancial-agent/
 
 > `docker compose up` 후 http://localhost:8501
 
-### **Welcome**
+### Step 1. 접속
+
+Streamlit UI에 접속하면 4가지 예시 질문과 사용 가능한 Tool 목록이 표시됩니다.
+
 ![Welcome](docs/demo/ui-welcome.png)
 
-### **채팅 + Tool 뱃지**
+### Step 2. 질문 & 응답
+
+"삼성전자(005930) 종합 분석 리포트"를 요청하면, Agent가 DART 재무제표 + KRX 주가 + 공시 검색 Tool을 자동 호출하여 분석 결과를 반환합니다. 하단의 Tool 뱃지에서 어떤 Tool이 호출되었는지 확인할 수 있습니다.
+
 ![Chat](docs/demo/ui-chat.png)
 
-### **LangFuse 대시보드**
+### Step 3. LangFuse 대시보드
+
+동일한 요청이 LangFuse에서 어떻게 추적되었는지 확인합니다. Home 대시보드에서 전체 trace 수, 모델별 토큰 사용량, 비용을 한눈에 볼 수 있습니다.
+
 ![Dashboard](docs/demo/langfuse-dashboard.png)
 
-### **LangFuse 트레이스 목록**
+### Step 4. 트레이스 목록
+
+Tracing 탭에서 개별 요청의 session, latency, 사용된 Tool을 목록으로 확인합니다.
+
 ![Traces](docs/demo/langfuse-traces.png)
 
-### **LangFuse 트레이스 상세**
+### Step 5. 트레이스 상세
+
+개별 trace를 열면 LangGraph 노드 흐름(agent → tools)과 각 Tool 호출의 입출력을 상세히 확인할 수 있습니다.
+
 ![Trace Detail](docs/demo/langfuse-trace-detail.png)
 
 ---
