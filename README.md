@@ -130,11 +130,20 @@ fAInancial-agent/
 
 > `docker compose up` 후 http://localhost:8501
 
-### **채팅 화면**
+### **Welcome**
+![Welcome](docs/demo/ui-welcome.png)
+
+### **채팅 + Tool 뱃지**
 ![Chat](docs/demo/ui-chat.png)
 
-### **응답 + Tool 뱃지**
-![Tool Badge](docs/demo/ui-tool-badge.png)
+### **LangFuse 대시보드**
+![Dashboard](docs/demo/langfuse-dashboard.png)
+
+### **LangFuse 트레이스 목록**
+![Traces](docs/demo/langfuse-traces.png)
+
+### **LangFuse 트레이스 상세**
+![Trace Detail](docs/demo/langfuse-trace-detail.png)
 
 ---
 
