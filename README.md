@@ -5,6 +5,27 @@
 > 자연어로 한국 금융 데이터를 조회·분석하는 AI Agent
 > MCP Tool + Gemini API + LangGraph
 
+### 이 문서의 독자
+
+| 독자 | 시작 섹션 |
+|------|----------|
+| **처음 방문한 개발자** | [빠른 시작](#빠른-시작) → 로컬에서 바로 실행 |
+| **기술 스택 평가자** | [아키텍처](#아키텍처) → [기술 스택](#기술-스택) → [ADR](docs/adr/README.md) |
+| **프로젝트 진행 과정** | [Phase 로드맵](#phase-로드맵) → [문서 네비게이션](docs/NAVIGATION.md) |
+
+---
+
+## 시작하기 전에
+
+| 항목 | 요구 사항 |
+|------|----------|
+| Docker | Docker & Docker Compose v2 이상 |
+| Gemini API 키 | [Google AI Studio](https://aistudio.google.com/apikey)에서 발급 |
+| DART API 키 | [OpenDART](https://opendart.fss.or.kr/)에서 발급 |
+| Python | 3.12+ (로컬 개발 시에만 필요, Docker 실행 시 불필요) |
+
+> API 키는 `.env` 파일에만 저장합니다. `.env.example`을 복사한 뒤 키를 입력하세요.
+
 ---
 
 ## 아키텍처
